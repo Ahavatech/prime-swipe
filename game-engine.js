@@ -240,12 +240,13 @@
 
   function move(state, direction, random = Math.random) {
     if (state.status !== 'playing' || !DIRECTIONS.has(direction)) {
-      return { state, moved: false, scoreDelta: 0, mergedValues: [], mergedIndices: [] }
+      return { state, moved: false, scoreDelta: 0, mergedValues: [], mergedIndices: [], merges: [] }
     }
 
     const board = state.board.slice()
     const mergedValues = []
     const mergedIndices = []
+    const merges = []
     let scoreDelta = 0
 
     for (const line of getLines(direction)) {
@@ -261,6 +262,7 @@
           Number.isSafeInteger(sum) &&
           isPrime(sum)
         ) {
+          merges.push({ index: line[merged.length], from: [current, next], sum })
           mergedIndices.push(line[merged.length])
           merged.push(sum)
           mergedValues.push(sum)
@@ -282,7 +284,7 @@
 
     const moved = board.some((value, index) => value !== state.board[index])
     if (!moved) {
-      return { state, moved: false, scoreDelta: 0, mergedValues: [], mergedIndices: [] }
+      return { state, moved: false, scoreDelta: 0, mergedValues: [], mergedIndices: [], merges: [] }
     }
 
     const nextState = {
@@ -296,7 +298,7 @@
     const spawnedState = spawnTile(nextState, random)
     spawnedState.status = isGameOver(spawnedState.board) ? 'game-over' : 'playing'
 
-    return { state: spawnedState, moved: true, scoreDelta, mergedValues, mergedIndices }
+    return { state: spawnedState, moved: true, scoreDelta, mergedValues, mergedIndices, merges }
   }
 
   return {

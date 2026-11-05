@@ -3,9 +3,15 @@ document.addEventListener('DOMContentLoaded', () => {
   const scoreDisplay = document.getElementById('score')
   const bestPrimeDisplay = document.getElementById('best-prime')
   const goalStatus = document.getElementById('goal-status')
-  const goalNote = document.getElementById('goal-note')
   const statusDisplay = document.getElementById('game-status')
+  const notice = document.getElementById('notice')
   const newGameButton = document.getElementById('new-game')
+  const rulesDialog = document.getElementById('rules-dialog')
+  const openRulesButton = document.getElementById('open-rules')
+  const closeRulesButton = document.getElementById('close-rules')
+  const leaderboardDialog = document.getElementById('leaderboard-dialog')
+  const openLeaderboardButton = document.getElementById('open-leaderboard')
+  const closeLeaderboardButton = document.getElementById('close-leaderboard')
   const gameOverDialog = document.getElementById('game-over-dialog')
   const gameOverTitle = document.getElementById('game-over-title')
   const finalScore = document.getElementById('final-score')
@@ -37,6 +43,11 @@ document.addEventListener('DOMContentLoaded', () => {
   let submissionConfirmed = false
   let submissionSequence = 0
 
+  function showNotice(message) {
+    notice.textContent = message
+    notice.hidden = false
+  }
+
   try {
     const stored = globalThis.localStorage.getItem('prime-swipe-best-prime')
     if (stored !== null) {
@@ -48,6 +59,7 @@ document.addEventListener('DOMContentLoaded', () => {
   } catch {
     storageAvailable = false
     statusDisplay.textContent = 'Local storage is unavailable. Your Best will last only for this visit.'
+    showNotice('Local storage is unavailable, so your best prime will last only for this visit.')
   }
 
   for (let rowIndex = 0; rowIndex < 4; rowIndex += 1) {
@@ -80,28 +92,73 @@ document.addEventListener('DOMContentLoaded', () => {
     return Math.max(0, Math.floor((Date.now() - startedAt) / 1000))
   }
 
-  function render(mergedIndices = []) {
+  function modalOpen() {
+    return Boolean(document.querySelector('dialog[open]'))
+  }
+
+  // Odd tiles darken as they grow; this keeps going past 101.
+  function tierFor(value) {
+    if (value < 5) return 0
+    if (value < 13) return 1
+    if (value < 31) return 2
+    if (value < 67) return 3
+    return 4
+  }
+
+  function equationText(merge) {
+    return `${formatNumber(merge.from[0])} + ${formatNumber(merge.from[1])}`
+  }
+
+  function render(merges = []) {
+    const mergeByIndex = new Map(merges.map(merge => [merge.index, merge]))
+
     scoreDisplay.textContent = formatNumber(state.score)
     bestPrimeDisplay.textContent = formatNumber(bestPrime)
-    goalStatus.textContent = state.goalAchieved ? 'Reached — keep playing' : 'Not reached'
+    goalStatus.textContent = state.goalAchieved ? 'Reached' : 'Not yet'
     goalStatus.classList.toggle('is-achieved', state.goalAchieved)
-    goalNote.textContent = state.goalAchieved
-      ? '101 reached. The run continues; keep building.'
-      : '101 is a milestone, not an ending. Your run continues.'
 
     state.board.forEach((value, index) => {
       const cell = cells[index]
-      const isPrime = value > 0 && GameEngine.isPrime(value)
+      const position = `Row ${Math.floor(index / 4) + 1}, column ${(index % 4) + 1}`
+      const merge = mergeByIndex.get(index)
+
+      cell.classList.remove('just-merged')
       cell.dataset.value = String(value)
-      cell.textContent = value === 0 ? '' : formatNumber(value)
-      cell.setAttribute(
-        'aria-label',
-        value === 0
-          ? `Row ${Math.floor(index / 4) + 1}, column ${(index % 4) + 1}: empty`
-          : `Row ${Math.floor(index / 4) + 1}, column ${(index % 4) + 1}: ${value}${isPrime ? ', prime tile' : ''}`
-      )
-      cell.classList.toggle('just-merged', mergedIndices.includes(index))
+      if (value === 0) {
+        delete cell.dataset.parity
+        delete cell.dataset.tier
+        cell.textContent = ''
+        cell.setAttribute('aria-label', `${position}: empty`)
+        return
+      }
+
+      const isOdd = value % 2 === 1
+      cell.dataset.parity = isOdd ? 'odd' : 'even'
+      if (isOdd) {
+        cell.dataset.tier = String(tierFor(value))
+      } else {
+        delete cell.dataset.tier
+      }
+      cell.textContent = formatNumber(value)
+
+      const labelParts = [`${position}: ${value}`, isOdd ? 'odd' : 'even']
+      if (GameEngine.isPrime(value)) {
+        labelParts.push('prime tile')
+      }
+      if (merge) {
+        labelParts.push(`built from ${merge.from[0]} plus ${merge.from[1]}`)
+        const equation = document.createElement('span')
+        equation.className = 'tile-eq'
+        equation.setAttribute('aria-hidden', 'true')
+        equation.textContent = equationText(merge)
+        cell.appendChild(equation)
+      }
+      cell.setAttribute('aria-label', labelParts.join(', '))
     })
+
+    // Force a reflow so the merge animation replays when the same cell merges on back-to-back swipes.
+    void grid.offsetWidth
+    mergeByIndex.forEach((merge, index) => cells[index].classList.add('just-merged'))
   }
 
   function saveBestPrime() {
@@ -118,6 +175,7 @@ document.addEventListener('DOMContentLoaded', () => {
     } catch {
       storageAvailable = false
       statusDisplay.textContent = 'Your Best improved, but local storage is unavailable. It will last only for this visit.'
+      showNotice('Local storage is unavailable, so your best prime will last only for this visit.')
     }
   }
 
@@ -129,9 +187,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
   function announceMove(direction, outcome) {
     const label = direction[0].toUpperCase() + direction.slice(1)
-    if (outcome.mergedValues.length) {
-      const merged = outcome.mergedValues.map(formatNumber).join(' and ')
-      statusDisplay.textContent = `${label}. Built prime tile${outcome.mergedValues.length === 1 ? '' : 's'} ${merged}. Score +${formatNumber(outcome.scoreDelta)}. One new tile spawned.`
+    if (outcome.merges.length) {
+      const sums = outcome.merges
+        .map(merge => `${formatNumber(merge.from[0])} + ${formatNumber(merge.from[1])} = ${formatNumber(merge.sum)}`)
+        .join(', ')
+      statusDisplay.textContent = `${label}. ${sums}. Score +${formatNumber(outcome.scoreDelta)}. One new tile spawned.`
     } else {
       statusDisplay.textContent = `${label}. Tiles moved; no prime sums formed. One new tile spawned.`
     }
@@ -182,7 +242,7 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   function move(direction) {
-    if (state.status !== 'playing' || gameOverDialog.open) {
+    if (state.status !== 'playing' || modalOpen()) {
       return
     }
     const outcome = GameEngine.move(state, direction)
@@ -193,7 +253,7 @@ document.addEventListener('DOMContentLoaded', () => {
     state = outcome.state
     moveCount += 1
     saveBestPrime()
-    render(outcome.mergedIndices)
+    render(outcome.merges)
     announceMove(direction, outcome)
     if (state.status === 'game-over') {
       statusDisplay.textContent = `${statusDisplay.textContent} Game over. The board is full with no legal prime-sum merge.`
@@ -219,7 +279,7 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   function handleKeyDown(event) {
-    if (event.defaultPrevented || event.altKey || event.ctrlKey || event.metaKey || gameOverDialog.open) {
+    if (event.defaultPrevented || event.altKey || event.ctrlKey || event.metaKey || modalOpen()) {
       return
     }
     const target = event.target
@@ -404,9 +464,20 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   }
 
+  function openLeaderboard() {
+    if (!leaderboardDialog.open) {
+      leaderboardDialog.showModal()
+    }
+    loadLeaderboard()
+  }
+
   newGameButton.addEventListener('click', newGame)
   playAgainButton.addEventListener('click', newGame)
   closeSummaryButton.addEventListener('click', () => gameOverDialog.close())
+  openRulesButton.addEventListener('click', () => rulesDialog.showModal())
+  closeRulesButton.addEventListener('click', () => rulesDialog.close())
+  openLeaderboardButton.addEventListener('click', openLeaderboard)
+  closeLeaderboardButton.addEventListener('click', () => leaderboardDialog.close())
   gameOverDialog.addEventListener('close', () => {
     if (state.status === 'game-over') {
       grid.focus()

@@ -1,148 +1,148 @@
 <!doctype html>
 <html lang="en">
 <head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="theme-color" content="#172b4d">
-  <meta name="prime-swipe-api-base" content="">
-  <title>Prime Swipe — a prime-sum puzzle</title>
-  <meta name="description" content="Slide the tiles, build prime sums, and see how far your 4×4 board can go.">
-  <link rel="stylesheet" href="styles.css">
-  <script defer src="game-engine.js"></script>
-  <script defer src="leaderboard-api.js"></script>
-  <script defer src="functions.js"></script>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#172b4d">
+<meta name="prime-swipe-api-base" content="">
+<title>Prime Swipe — a prime-sum puzzle</title>
+<meta name="description" content="Slide the tiles, build prime sums, and see how far your 4×4 board can go.">
+<link rel="stylesheet" href="styles.css">
+<script defer src="game-engine.js"></script>
+<script defer src="leaderboard-api.js"></script>
+<script defer src="functions.js"></script>
 </head>
 <body>
-  <header class="site-header">
-    <div class="header-inner">
-      <a class="brand" href="./" aria-label="Prime Swipe home">
-        <span class="brand-mark" aria-hidden="true"><i></i><i></i><i></i><i></i></span>
-        <span>Prime Swipe</span>
-      </a>
-      <button id="new-game" class="button button-light" type="button">New game</button>
-    </div>
-  </header>
+<header class="site-header">
+  <div class="header-inner">
+    <a class="brand" href="./" aria-label="Prime Swipe home">
+      <span class="brand-mark" aria-hidden="true"><i></i><i></i><i></i><i></i></span>
+      <span>Prime Swipe</span>
+    </a>
+    <button id="new-game" class="button button-light" type="button">New game</button>
+  </div>
+</header>
 
-  <main class="page-shell">
-    <section class="intro" aria-labelledby="page-title">
-      <h1 id="page-title">Every swipe is a prime decision.</h1>
-      <p>Pack the board. Find a prime sum. Keep playing past 101.</p>
+<main class="page-shell">
+  <h1 class="visually-hidden">Prime Swipe</h1>
+  <p id="game-status" class="visually-hidden" role="status" aria-live="polite" aria-atomic="true"></p>
+  <p id="notice" class="notice" role="status" hidden></p>
+
+  <dl class="score-strip" aria-label="This run">
+    <div class="stat">
+      <dt>Score</dt>
+      <dd id="score">0</dd>
+    </div>
+    <div class="stat">
+      <dt>Best prime <span>this device</span></dt>
+      <dd id="best-prime">0</dd>
+    </div>
+    <div class="stat">
+      <dt>Goal 101</dt>
+      <dd id="goal-status">Not yet</dd>
+    </div>
+  </dl>
+
+  <p id="board-help" class="visually-hidden">Swipe the board, or focus it and use arrow keys or W A S D.</p>
+  <div id="grid" class="grid" role="grid" aria-label="Prime Swipe 4 by 4 game board" aria-rowcount="4" aria-colcount="4" aria-describedby="board-help" tabindex="0"></div>
+
+  <div class="board-links">
+    <button id="open-rules" class="button button-text" type="button">How to play</button>
+    <button id="open-leaderboard" class="button button-text" type="button">Leaderboard</button>
+  </div>
+</main>
+
+<dialog id="rules-dialog" class="game-dialog" aria-labelledby="rules-title">
+  <div class="dialog-inner">
+    <div class="dialog-heading">
+      <h2 id="rules-title">How to play</h2>
+    </div>
+    <div class="rules">
+      <p>Swipe the board, or use the arrow keys or W A S D. Every tile slides as far as it can.</p>
+      <p>When two touching tiles add up to a prime, they merge into that prime. A 3 next to an 8 becomes an 11, because 3 + 8 = 11.</p>
+      <p>Two odd tiles add up to an even number, and so do two even tiles, so a useful merge needs one of each. Even tiles are your fuel. The one exception is 1 + 1 = 2, which merges even though 1 is not prime.</p>
+      <ul class="legend">
+        <li><span class="swatch swatch-even" aria-hidden="true"></span>Even tile</li>
+        <li><span class="swatch swatch-odd" aria-hidden="true"></span>Odd tile, darker as it grows</li>
+      </ul>
+      <p>Every swipe that moves something adds one new tile. A tile built by a merge waits until the next swipe to merge again.</p>
+      <p>Build a 101 to reach the goal, then keep going. The run ends when the board is full and no neighbors add up to a prime.</p>
+      <details class="spawn-details">
+        <summary>Spawn weights and parity assist</summary>
+        <p>Starting weights: 1 (20), 2 (25), 3 (10), 4 (20), 5 (10), 6 (15). At a board tile of 23, 8, 10, and 12 unlock; at 53, 14 and 16 unlock. Each unlocked tile has weight 5.</p>
+        <p>If there are fewer even tiles than odd tiles, even spawns gain 20 percentage points and odd spawns lose 20. Tile 1 counts as odd. Active weights are normalized; within each parity, relative weights stay the same.</p>
+      </details>
+    </div>
+    <div class="dialog-actions">
+      <button id="close-rules" class="button button-primary" type="button">Got it</button>
+    </div>
+  </div>
+</dialog>
+
+<dialog id="leaderboard-dialog" class="game-dialog" aria-labelledby="leaderboard-title">
+  <div class="dialog-inner">
+    <div class="dialog-heading">
+      <h2 id="leaderboard-title">Leaderboard</h2>
+    </div>
+    <p>Ranked by cumulative Score. Largest prime is listed separately.</p>
+    <p id="leaderboard-status" class="section-status" role="status" aria-live="polite">Leaderboard is optional. No run is sent unless you choose to submit it.</p>
+    <div id="leaderboard-table-wrap" class="table-wrap" hidden>
+      <table>
+        <caption>Prime Swipe runs, ranked by cumulative Score</caption>
+        <thead>
+          <tr>
+            <th scope="col">Rank</th>
+            <th scope="col">Player</th>
+            <th scope="col">Score</th>
+            <th scope="col">Largest prime</th>
+          </tr>
+        </thead>
+        <tbody id="leaderboard-entries"></tbody>
+      </table>
+    </div>
+    <div class="dialog-actions">
+      <button id="load-leaderboard" class="button button-outline" type="button">Refresh</button>
+      <button id="close-leaderboard" class="button button-primary" type="button">Close</button>
+    </div>
+  </div>
+</dialog>
+
+<dialog id="game-over-dialog" class="game-dialog" aria-labelledby="game-over-title" aria-describedby="game-over-copy">
+  <div class="dialog-inner">
+    <div class="dialog-heading">
+      <span class="dialog-mark" aria-hidden="true"></span>
+      <h2 id="game-over-title" tabindex="-1">No prime moves left.</h2>
+    </div>
+    <p id="game-over-copy">The board is full and no neighbors add up to a prime.</p>
+
+    <dl class="run-summary" aria-label="Run summary">
+      <div><dt>Score</dt><dd id="final-score">0</dd></div>
+      <div><dt>Largest prime</dt><dd id="final-largest-prime">0</dd></div>
+      <div><dt>Moves</dt><dd id="final-moves">0</dd></div>
+      <div><dt>Time</dt><dd id="final-duration">0:00</dd></div>
+      <div><dt>Device best</dt><dd id="final-best">0</dd></div>
+    </dl>
+
+    <section class="submission-panel" aria-labelledby="submission-title">
+      <h3 id="submission-title">Add your run to the board?</h3>
+      <p>Only your display name and run statistics are sent, and only after you submit. Rankings are confirmed by the server.</p>
+      <form id="score-form" novalidate>
+        <label for="display-name">Display name</label>
+        <div class="name-entry">
+          <input id="display-name" name="displayName" type="text" maxlength="12" autocomplete="nickname" autocapitalize="characters" aria-describedby="name-help name-error">
+          <button id="submit-score" class="button button-primary" type="submit">Check rank &amp; submit</button>
+        </div>
+        <p id="name-help" class="field-help">1–12 letters, numbers, spaces, hyphens, or underscores.</p>
+        <p id="name-error" class="field-error" role="alert" hidden></p>
+      </form>
+      <p id="submission-status" class="section-status" role="status" aria-live="polite" aria-atomic="true"></p>
     </section>
 
-    <p id="game-status" class="live-status" role="status" aria-live="polite" aria-atomic="true"></p>
-
-    <div class="game-workspace">
-      <section class="board-panel" aria-labelledby="board-title">
-        <div class="board-heading">
-          <div>
-            <h2 id="board-title">Game board</h2>
-            <p id="board-help">Swipe the board, or focus it and use arrow keys or W A S D.</p>
-          </div>
-          <span class="board-size">4 × 4</span>
-        </div>
-        <div id="grid" class="grid" role="grid" aria-label="Prime Swipe 4 by 4 game board" aria-rowcount="4" aria-colcount="4" aria-describedby="board-help" tabindex="0"></div>
-        <div class="direction-hint" aria-hidden="true">
-          <span>←</span><span>↑</span><span>↓</span><span>→</span>
-          <span class="hint-copy">or W A S D</span>
-        </div>
-      </section>
-
-      <aside class="game-sidebar" aria-label="Game information and rules">
-        <section class="stats-panel" aria-labelledby="stats-title">
-          <h2 id="stats-title">This run</h2>
-          <dl class="stats-list">
-            <div class="stat-row">
-              <dt>Score</dt>
-              <dd id="score">0</dd>
-            </div>
-            <div class="stat-row">
-              <dt>Best <span>(largest prime)</span></dt>
-              <dd id="best-prime">0</dd>
-            </div>
-            <div class="stat-row goal-row">
-              <dt>101 goal</dt>
-              <dd id="goal-status">Not reached</dd>
-            </div>
-          </dl>
-          <p id="goal-note" class="goal-note">101 is a milestone, not an ending. Your run continues.</p>
-        </section>
-
-        <section class="rules-panel" aria-labelledby="rules-title">
-          <h2 id="rules-title">How to play</h2>
-          <p>Slide in any direction. Tiles pack toward that edge, then neighboring tiles merge only when their sum is prime.</p>
-          <p>A new tile appears after every move that changes the board. A merged tile cannot merge again until your next swipe.</p>
-          <p><strong>1 is not prime, but 1 + 1 = 2 is a legal merge.</strong></p>
-          <details class="spawn-details">
-            <summary>Spawn weights and parity assist</summary>
-            <p>Starting weights: 1 (20), 2 (25), 3 (10), 4 (20), 5 (10), 6 (15). At a board tile of 23, 8, 10, and 12 unlock; at 53, 14 and 16 unlock. Each unlocked tile has weight 5.</p>
-            <p>If there are fewer even tiles than odd tiles, even spawns gain 20 percentage points and odd spawns lose 20. Tile 1 counts as odd. Active weights are normalized; within each parity, relative weights stay the same.</p>
-          </details>
-        </section>
-      </aside>
+    <div class="dialog-actions">
+      <button id="play-again" class="button button-primary" type="button">Play again</button>
+      <button id="close-summary" class="button button-outline" type="button">Close summary</button>
     </div>
-
-    <section class="leaderboard-section" aria-labelledby="leaderboard-title">
-      <div class="leaderboard-heading">
-        <div>
-          <h2 id="leaderboard-title">Prime Swipe leaderboard</h2>
-          <p>Ranked by cumulative Score. Largest prime is shown separately.</p>
-        </div>
-        <button id="load-leaderboard" class="button button-outline" type="button">View leaderboard</button>
-      </div>
-      <p id="leaderboard-status" class="section-status" role="status" aria-live="polite">Leaderboard is optional; no run is sent unless you choose to submit it.</p>
-      <div id="leaderboard-table-wrap" class="table-wrap" hidden>
-        <table>
-          <caption>Prime Swipe runs, ranked by cumulative Score</caption>
-          <thead>
-            <tr>
-              <th scope="col">Rank</th>
-              <th scope="col">Player</th>
-              <th scope="col">Score</th>
-              <th scope="col">Largest prime</th>
-            </tr>
-          </thead>
-          <tbody id="leaderboard-entries"></tbody>
-        </table>
-      </div>
-    </section>
-  </main>
-
-  <dialog id="game-over-dialog" class="game-dialog" aria-labelledby="game-over-title" aria-describedby="game-over-copy">
-    <div class="dialog-inner">
-      <div class="dialog-heading">
-        <span class="dialog-mark" aria-hidden="true"></span>
-        <h2 id="game-over-title" tabindex="-1">No prime moves left.</h2>
-      </div>
-      <p id="game-over-copy">The board is full and no adjacent pair can make a prime sum. Here is your run.</p>
-
-      <dl class="run-summary" aria-label="Run summary">
-        <div><dt>Score</dt><dd id="final-score">0</dd></div>
-        <div><dt>Largest prime</dt><dd id="final-largest-prime">0</dd></div>
-        <div><dt>Moves</dt><dd id="final-moves">0</dd></div>
-        <div><dt>Time</dt><dd id="final-duration">0:00</dd></div>
-        <div><dt>Device Best</dt><dd id="final-best">0</dd></div>
-      </dl>
-
-      <section class="submission-panel" aria-labelledby="submission-title">
-        <h3 id="submission-title">Add your run to the board?</h3>
-        <p>Only your display name and run statistics are sent, and only after you submit. Rankings are confirmed by the server.</p>
-        <form id="score-form" novalidate>
-          <label for="display-name">Display name</label>
-          <div class="name-entry">
-            <input id="display-name" name="displayName" type="text" maxlength="12" autocomplete="nickname" autocapitalize="characters" aria-describedby="name-help name-error">
-            <button id="submit-score" class="button button-primary" type="submit">Check rank &amp; submit</button>
-          </div>
-          <p id="name-help" class="field-help">1–12 letters, numbers, spaces, hyphens, or underscores.</p>
-          <p id="name-error" class="field-error" role="alert" hidden></p>
-        </form>
-        <p id="submission-status" class="section-status" role="status" aria-live="polite" aria-atomic="true"></p>
-      </section>
-
-      <div class="dialog-actions">
-        <button id="play-again" class="button button-primary" type="button">Play again</button>
-        <button id="close-summary" class="button button-outline" type="button">Close summary</button>
-      </div>
-    </div>
-  </dialog>
+  </div>
+</dialog>
 </body>
 </html>
