@@ -7,5 +7,3 @@ dev-artifact/
 .pages-build-test-*/
 .pages-build-invalid-test-*/
 .pages-build-local-test-*/
-.impeccable/review/
-.impeccable/mocks/
