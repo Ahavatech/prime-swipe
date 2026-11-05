@@ -6,8 +6,10 @@ const vm = require('node:vm')
 const GameEngine = require('../game-engine')
 
 const ids = [
-  'grid', 'score', 'best-prime', 'goal-status', 'goal-note', 'game-status',
-  'new-game', 'game-over-dialog', 'game-over-title', 'final-score',
+  'grid', 'score', 'best-prime', 'goal-status', 'game-status', 'notice',
+  'new-game', 'open-rules', 'close-rules', 'rules-dialog',
+  'open-leaderboard', 'close-leaderboard', 'leaderboard-dialog',
+  'game-over-dialog', 'game-over-title', 'final-score',
   'final-largest-prime', 'final-moves', 'final-duration', 'final-best',
   'score-form', 'display-name', 'name-error', 'submit-score',
   'submission-status', 'play-again', 'close-summary', 'load-leaderboard',
@@ -160,6 +162,14 @@ function createApp({ api, initialState, outcome, storageError = null } = {}) {
   const document = new FakeElement()
   document.body = new FakeElement()
   document.getElementById = id => elements.get(id)
+  document.querySelector = selector => {
+    if (selector !== 'dialog[open]') {
+      return null
+    }
+    return ['rules-dialog', 'leaderboard-dialog', 'game-over-dialog']
+      .map(id => elements.get(id))
+      .find(element => element.open) || null
+  }
   document.createElement = () => new FakeElement()
   const stored = new Map()
   const localStorage = {
@@ -193,7 +203,8 @@ function createApp({ api, initialState, outcome, storageError = null } = {}) {
           ...outcome,
           state: cloneState(outcome.state),
           mergedValues: outcome.mergedValues || [],
-          mergedIndices: outcome.mergedIndices || []
+          mergedIndices: outcome.mergedIndices || [],
+          merges: outcome.merges || []
         }
       }
       return GameEngine.move(state, direction, () => 0)
@@ -256,7 +267,7 @@ test('keyboard merge updates Score, largest-prime Best, and local persistence', 
   assert.equal(app.elements.get('score').textContent, '2')
   assert.equal(app.elements.get('best-prime').textContent, '2')
   assert.equal(app.stored.get('prime-swipe-best-prime'), '2')
-  assert.match(app.elements.get('game-status').textContent, /Built prime tile 2/)
+  assert.match(app.elements.get('game-status').textContent, /1 \+ 1 = 2/)
   assert.match(app.elements.get('game-status').textContent, /One new tile spawned/)
 })
 
@@ -266,6 +277,7 @@ test('merge feedback marks only the destination when another tile has the same v
   const tiles = app.grid.children.flatMap(row => row.children)
 
   assert.ok(tiles[0].className.split(/\s+/).includes('just-merged'))
+  assert.equal(tiles[0].children[0].textContent, '1 + 2')
   assert.equal(tiles[8].className.split(/\s+/).includes('just-merged'), false)
   assert.equal(tiles[8].dataset.prime, undefined)
 })
@@ -298,9 +310,9 @@ test('building exactly 101 marks the goal but leaves the game running', () => {
 
   assert.equal(app.elements.get('score').textContent, '101')
   assert.equal(app.elements.get('best-prime').textContent, '101')
-  assert.equal(app.elements.get('goal-status').textContent, 'Reached — keep playing')
+  assert.equal(app.elements.get('goal-status').textContent, 'Reached')
   assert.equal(app.elements.get('game-over-dialog').open, false)
-  assert.match(app.elements.get('goal-note').textContent, /run continues/)
+  assert.match(app.elements.get('game-status').textContent, /45 \+ 56 = 101/)
 })
 
 test('terminal merge announcement preserves its merge, spawn, and game-over status', () => {
@@ -314,7 +326,7 @@ test('terminal merge announcement preserves its merge, spawn, and game-over stat
   app.document.dispatch('keydown', { key: 'ArrowLeft' })
 
   const announcement = app.elements.get('game-status').textContent
-  assert.match(announcement, /Built prime tile 3/)
+  assert.match(announcement, /1 \+ 2 = 3/)
   assert.match(announcement, /Score \+3/)
   assert.match(announcement, /One new tile spawned/)
   assert.match(announcement, /Game over/)
@@ -449,11 +461,22 @@ test('leaderboard control fetches entries and keeps values in separate columns',
     })
   })
   const app = createApp({ api: calls.api })
-  app.elements.get('load-leaderboard').dispatch('click')
+  app.elements.get('open-leaderboard').dispatch('click')
   await settle()
 
+  assert.equal(app.elements.get('leaderboard-dialog').open, true)
   assert.equal(calls.calls.leaderboard, 1)
   const row = app.elements.get('leaderboard-entries').children[0]
   assert.deepEqual(row.children.map(cell => cell.textContent), ['1', 'ACE', '2,400', '101'])
   assert.equal(app.elements.get('leaderboard-table-wrap').hidden, false)
+  app.elements.get('close-leaderboard').dispatch('click')
+  assert.equal(app.elements.get('leaderboard-dialog').open, false)
+})
+
+test('rules open in a dialog and can be closed', () => {
+  const app = createApp()
+  app.elements.get('open-rules').dispatch('click')
+  assert.equal(app.elements.get('rules-dialog').open, true)
+  app.elements.get('close-rules').dispatch('click')
+  assert.equal(app.elements.get('rules-dialog').open, false)
 })

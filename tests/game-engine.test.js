@@ -23,6 +23,19 @@ function gameWith(values, overrides = {}) {
   }
 }
 
+function assertMergeRecords(outcome) {
+  assert.equal(outcome.merges.length, outcome.mergedValues.length)
+  assert.equal(outcome.merges.length, outcome.mergedIndices.length)
+
+  outcome.merges.forEach((merge, index) => {
+    assert.equal(merge.from[0] + merge.from[1], merge.sum)
+    assert.equal(GameEngine.isPrime(merge.sum), true)
+    assert.equal(outcome.state.board[merge.index], merge.sum)
+    assert.equal(outcome.mergedValues[index], merge.sum)
+    assert.equal(outcome.mergedIndices[index], merge.index)
+  })
+}
+
 test('primality handles 1 + 1 = 2, small composites, and large safe integers', () => {
   assert.equal(GameEngine.isPrime(2), true)
   assert.equal(GameEngine.isPrime(5), true)
@@ -38,6 +51,8 @@ test('primality handles 1 + 1 = 2, small composites, and large safe integers', (
   const merged = GameEngine.move(ones, 'left', randomSequence(0, 0))
   assert.equal(merged.state.board[0], 2)
   assert.equal(merged.scoreDelta, 2)
+  assert.deepEqual(merged.merges, [{ index: 0, from: [1, 1], sum: 2 }])
+  assertMergeRecords(merged)
 })
 
 test('packs and merges left in leading-edge order, skipping non-prime sums', () => {
@@ -48,6 +63,7 @@ test('packs and merges left in leading-edge order, skipping non-prime sums', () 
   assert.equal(outcome.scoreDelta, 7)
   assert.deepEqual(outcome.mergedValues, [7])
   assert.deepEqual(outcome.mergedIndices, [1])
+  assertMergeRecords(outcome)
 })
 
 test('packs and merges right, up, and down toward the selected edge', () => {
@@ -56,6 +72,7 @@ test('packs and merges right, up, and down toward the selected edge', () => {
   assert.deepEqual(right.state.board.slice(0, 4), [0, 0, 3, 4])
   assert.equal(right.scoreDelta, 3)
   assert.deepEqual(right.mergedIndices, [2])
+  assertMergeRecords(right)
 
   const column = gameWith({ 0: 1, 4: 2, 8: 4 })
   const down = GameEngine.move(column, 'down', randomSequence(0.99, 0.99))
@@ -64,6 +81,7 @@ test('packs and merges right, up, and down toward the selected edge', () => {
     [0, 0, 3, 4]
   )
   assert.deepEqual(down.mergedIndices, [8])
+  assertMergeRecords(down)
 
   const upState = gameWith({ 4: 1, 8: 2, 12: 4 })
   const up = GameEngine.move(upState, 'up', randomSequence(0.99, 0.99))
@@ -72,6 +90,7 @@ test('packs and merges right, up, and down toward the selected edge', () => {
     [3, 4, 0, 0]
   )
   assert.deepEqual(up.mergedIndices, [0])
+  assertMergeRecords(up)
 })
 
 test('a tile produced by a merge cannot merge again during that swipe', () => {
@@ -82,6 +101,7 @@ test('a tile produced by a merge cannot merge again during that swipe', () => {
   assert.equal(outcome.scoreDelta, 10)
   assert.deepEqual(outcome.mergedValues, [3, 7])
   assert.deepEqual(outcome.mergedIndices, [0, 1])
+  assertMergeRecords(outcome)
 })
 
 test('initial game has exactly one odd and one even tile in distinct random cells', () => {
@@ -152,6 +172,8 @@ test('invalid swipes change nothing and do not spawn', () => {
   assert.equal(unchanged.state, state)
   assert.equal(invalid.moved, false)
   assert.equal(unchanged.moved, false)
+  assert.deepEqual(invalid.merges, [])
+  assert.deepEqual(unchanged.merges, [])
 })
 
 test('a changed swipe spawns exactly once and unlocks persist for the run', () => {
