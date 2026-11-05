@@ -1,0 +1,61 @@
+name: Deploy Prime Swipe Pages
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: prime-swipe-pages
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Install API dependencies
+        run: npm ci --prefix backend
+
+      - name: Run frontend tests
+        run: npm test
+
+      - name: Run API tests
+        run: npm test --prefix backend
+
+      - name: Check frontend syntax
+        run: |
+          node --check functions.js
+          node --check game-engine.js
+          node --check leaderboard-api.js
+          node --check scripts/prepare-pages.mjs
+
+      - name: Stage frontend-only artifact with configured API origin
+        env:
+          PRIME_SWIPE_API_BASE_URL: ${{ vars.PRIME_SWIPE_API_BASE_URL }}
+        run: npm run pages:prepare -- pages-artifact
+
+      - name: Configure Pages build
+        uses: actions/configure-pages@v5
+
+      - name: Upload allowlisted frontend artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: pages-artifact
+
+      - name: Deploy Pages
+        id: deployment
+        uses: actions/deploy-pages@v4

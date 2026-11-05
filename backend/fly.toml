@@ -1,0 +1,31 @@
+app = "prime-swipe"
+primary_region = "ams"
+
+[build]
+  dockerfile = "Dockerfile"
+
+[env]
+  NODE_ENV = "production"
+  PORT = "8080"
+  DATABASE_PATH = "/data/prime-swipe.db"
+  CORS_ORIGINS = "https://ahavatech.github.io"
+  TRUST_PROXY_HOPS = "1"
+
+[[mounts]]
+  source = "prime_swipe_data"
+  destination = "/data"
+
+[http_service]
+  internal_port = 8080
+  force_https = true
+  auto_start_machines = true
+  auto_stop_machines = "stop"
+  min_machines_running = 1
+  processes = ["app"]
+
+  [[http_service.checks]]
+    interval = "30s"
+    timeout = "5s"
+    grace_period = "15s"
+    method = "GET"
+    path = "/api/v1/health"

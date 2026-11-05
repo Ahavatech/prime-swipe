@@ -1,0 +1,254 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-11-05T19:14:19+01:00",
+  "title": "Design System: Prime Swipe",
+  "extensions": {
+    "colorMeta": {
+      "construction-blue": {
+        "role": "primary",
+        "displayName": "Construction Blue",
+        "canonical": "#2f66b3"
+      },
+      "construction-blue-deep": {
+        "role": "primary",
+        "displayName": "Deep Construction Blue",
+        "canonical": "#234f8c"
+      },
+      "coral-signal": {
+        "role": "secondary",
+        "displayName": "Coral Signal",
+        "canonical": "#e36a4c"
+      },
+      "coral-deep": {
+        "role": "secondary",
+        "displayName": "Deep Coral",
+        "canonical": "#9c3d29"
+      },
+      "deep-navy": {
+        "role": "neutral",
+        "displayName": "Deep Navy",
+        "canonical": "#172b4d"
+      },
+      "soft-ink": {
+        "role": "neutral",
+        "displayName": "Soft Ink",
+        "canonical": "#435b7b"
+      },
+      "reading-ink": {
+        "role": "neutral",
+        "displayName": "Reading Ink",
+        "canonical": "#344c6c"
+      },
+      "page-ground": {
+        "role": "neutral",
+        "displayName": "Page Ground",
+        "canonical": "#f5f7fb"
+      },
+      "paper": {
+        "role": "neutral",
+        "displayName": "Paper",
+        "canonical": "#ffffff"
+      },
+      "pale-blue": {
+        "role": "neutral",
+        "displayName": "Pale Blue",
+        "canonical": "#dce7f3"
+      },
+      "empty-cell": {
+        "role": "neutral",
+        "displayName": "Empty Cell",
+        "canonical": "#e7edf5"
+      },
+      "tile-blue-light": {
+        "role": "neutral",
+        "displayName": "Light Tile Blue",
+        "canonical": "#d6e2f0"
+      },
+      "tile-blue-mid": {
+        "role": "neutral",
+        "displayName": "Mid Tile Blue",
+        "canonical": "#bfd1e7"
+      },
+      "tile-blue-strong": {
+        "role": "neutral",
+        "displayName": "Strong Tile Blue",
+        "canonical": "#a9c2e0"
+      },
+      "blue-divider": {
+        "role": "neutral",
+        "displayName": "Blue Divider",
+        "canonical": "#b8c8dd"
+      },
+      "soft-divider": {
+        "role": "neutral",
+        "displayName": "Soft Divider",
+        "canonical": "#d5deea"
+      }
+    },
+    "typographyMeta": {
+      "display": {
+        "displayName": "Aldrich Display",
+        "purpose": "Self-hosted face for the Prime Swipe wordmark and lead heading."
+      },
+      "body": {
+        "displayName": "System Sans",
+        "purpose": "Workhorse face for instructions, controls, statuses, and general interface copy."
+      },
+      "title": {
+        "displayName": "Interface Title",
+        "purpose": "Section headings for the board, stats, rules, and leaderboard."
+      },
+      "label": {
+        "displayName": "Compact Label",
+        "purpose": "Small data and table labels."
+      },
+      "numeric": {
+        "displayName": "Tabular Game Numerals",
+        "purpose": "Bold system-sans values for tiles and score readouts."
+      },
+      "control": {
+        "displayName": "Interface Control",
+        "purpose": "System-sans text for buttons and other game controls."
+      }
+    },
+    "motion": [
+      {
+        "name": "control-feedback",
+        "value": "background-color 140ms ease, color 140ms ease, border-color 140ms ease, transform 140ms ease",
+        "purpose": "Button hover and press feedback."
+      },
+      {
+        "name": "tile-color-shift",
+        "value": "background-color 140ms ease, color 140ms ease",
+        "purpose": "Tile color and text state changes."
+      },
+      {
+        "name": "prime-build",
+        "value": "360ms cubic-bezier(0.16, 1, 0.3, 1)",
+        "purpose": "Brief inset highlight for a newly merged tile."
+      },
+      {
+        "name": "reduced-motion",
+        "value": "prefers-reduced-motion: reduce; animation-duration: 0.01ms; transition-duration: 0.01ms",
+        "purpose": "Shortens authored motion for users who request reduced motion."
+      }
+    ],
+    "breakpoints": [
+      {
+        "name": "workspace-stack",
+        "value": "820px"
+      },
+      {
+        "name": "compact",
+        "value": "560px"
+      },
+      {
+        "name": "narrow",
+        "value": "360px"
+      }
+    ]
+  },
+  "components": [
+    {
+      "name": "Primary Button",
+      "kind": "button",
+      "refersTo": "button-primary",
+      "description": "Primary action with a blue fill, deeper hover, press response, and visible keyboard focus.",
+      "html": "<button class=\"ds-button ds-button-primary\" type=\"button\">New game</button>",
+      "css": ".ds-button { min-height: 46px; padding: 10px 18px; border: 1px solid transparent; border-radius: 9px; cursor: pointer; font: inherit; font-weight: 700; line-height: 1.2; transition: background-color 140ms ease, color 140ms ease, border-color 140ms ease, transform 140ms ease; } .ds-button:hover:not(:disabled) { transform: translateY(-1px); } .ds-button:active:not(:disabled) { transform: translateY(0); } .ds-button:disabled { cursor: wait; opacity: 0.62; } .ds-button:focus-visible { outline: 3px solid var(--focus); outline-offset: 3px; } .ds-button-primary { background: var(--blue); color: #fff; } .ds-button-primary:hover:not(:disabled) { background: #234f8c; } @media (prefers-reduced-motion: reduce) { .ds-button { transition-duration: 0.01ms !important; } }"
+    },
+    {
+      "name": "Light Button",
+      "kind": "button",
+      "refersTo": "button-light",
+      "description": "Light header action with navy text and a pale-blue hover state.",
+      "html": "<button class=\"ds-button ds-button-light\" type=\"button\">New game</button>",
+      "css": ".ds-button { min-height: 46px; padding: 10px 18px; border: 1px solid transparent; border-radius: 9px; cursor: pointer; font: inherit; font-weight: 700; line-height: 1.2; transition: background-color 140ms ease, color 140ms ease, border-color 140ms ease, transform 140ms ease; } .ds-button:hover:not(:disabled) { transform: translateY(-1px); } .ds-button:active:not(:disabled) { transform: translateY(0); } .ds-button:disabled { cursor: wait; opacity: 0.62; } .ds-button:focus-visible { outline: 3px solid var(--focus); outline-offset: 3px; } .ds-button-light { background: #f5f7fb; color: var(--navy); } .ds-button-light:hover:not(:disabled) { background: var(--blue-pale); } @media (prefers-reduced-motion: reduce) { .ds-button { transition-duration: 0.01ms !important; } }"
+    },
+    {
+      "name": "Outline Button",
+      "kind": "button",
+      "refersTo": "button-outline",
+      "description": "Quiet secondary action with an outlined default and pale hover surface.",
+      "html": "<button class=\"ds-button ds-button-outline\" type=\"button\">View leaderboard</button>",
+      "css": ".ds-button { min-height: 46px; padding: 10px 18px; border: 1px solid transparent; border-radius: 9px; cursor: pointer; font: inherit; font-weight: 700; line-height: 1.2; transition: background-color 140ms ease, color 140ms ease, border-color 140ms ease, transform 140ms ease; } .ds-button:hover:not(:disabled) { transform: translateY(-1px); } .ds-button:active:not(:disabled) { transform: translateY(0); } .ds-button:disabled { cursor: wait; opacity: 0.62; } .ds-button:focus-visible { outline: 3px solid var(--focus); outline-offset: 3px; } .ds-button-outline { border-color: #8ca0bc; background: transparent; color: var(--navy); } .ds-button-outline:hover:not(:disabled) { background: #e6edf6; } @media (prefers-reduced-motion: reduce) { .ds-button { transition-duration: 0.01ms !important; } }"
+    },
+    {
+      "name": "Game Board",
+      "kind": "custom",
+      "refersTo": "game-board",
+      "description": "Labeled square 4×4 board. Its current border-plus-shadow combination is a local source exception, not a reusable depth rule.",
+      "html": "<div class=\"ds-board\" role=\"grid\" aria-label=\"Prime Swipe 4 by 4 game board\" aria-rowcount=\"4\" aria-colcount=\"4\" tabindex=\"0\"><div class=\"ds-row\" role=\"row\"><div class=\"ds-cell\" role=\"gridcell\" aria-label=\"Row 1, column 1: 3\" data-value=\"3\">3</div><div class=\"ds-cell\" role=\"gridcell\" aria-label=\"Row 1, column 2: empty\" data-value=\"0\"></div><div class=\"ds-cell\" role=\"gridcell\" aria-label=\"Row 1, column 3: empty\" data-value=\"0\"></div><div class=\"ds-cell\" role=\"gridcell\" aria-label=\"Row 1, column 4: empty\" data-value=\"0\"></div></div><div class=\"ds-row\" role=\"row\"><div class=\"ds-cell\" role=\"gridcell\" aria-label=\"Row 2, column 1: empty\" data-value=\"0\"></div><div class=\"ds-cell\" role=\"gridcell\" aria-label=\"Row 2, column 2: empty\" data-value=\"0\"></div><div class=\"ds-cell\" role=\"gridcell\" aria-label=\"Row 2, column 3: empty\" data-value=\"0\"></div><div class=\"ds-cell\" role=\"gridcell\" aria-label=\"Row 2, column 4: empty\" data-value=\"0\"></div></div><div class=\"ds-row\" role=\"row\"><div class=\"ds-cell\" role=\"gridcell\" aria-label=\"Row 3, column 1: empty\" data-value=\"0\"></div><div class=\"ds-cell\" role=\"gridcell\" aria-label=\"Row 3, column 2: 2\" data-value=\"2\">2</div><div class=\"ds-cell\" role=\"gridcell\" aria-label=\"Row 3, column 3: empty\" data-value=\"0\"></div><div class=\"ds-cell\" role=\"gridcell\" aria-label=\"Row 3, column 4: empty\" data-value=\"0\"></div></div><div class=\"ds-row\" role=\"row\"><div class=\"ds-cell\" role=\"gridcell\" aria-label=\"Row 4, column 1: empty\" data-value=\"0\"></div><div class=\"ds-cell\" role=\"gridcell\" aria-label=\"Row 4, column 2: empty\" data-value=\"0\"></div><div class=\"ds-cell\" role=\"gridcell\" aria-label=\"Row 4, column 3: empty\" data-value=\"0\"></div><div class=\"ds-cell\" role=\"gridcell\" aria-label=\"Row 4, column 4: empty\" data-value=\"0\"></div></div></div>",
+      "css": ".ds-board { display: grid; width: min(100%, 500px); aspect-ratio: 1; grid-template: repeat(4, minmax(0, 1fr)) / repeat(4, minmax(0, 1fr)); gap: var(--cell-gap); margin: 0 auto; padding: var(--cell-gap); border: 1px solid #233b60; border-radius: 12px; background: var(--navy); box-shadow: 0 12px 28px rgba(23, 43, 77, 0.12); touch-action: none; user-select: none; } .ds-row { display: contents; } .ds-cell { display: flex; min-width: 0; min-height: 0; align-items: center; justify-content: center; overflow: hidden; border: 1px solid #c5d3e4; border-radius: 5px; background: #d6e2f0; color: var(--navy); font-size: clamp(22px, 5.2vw, 48px); font-weight: 760; font-variant-numeric: tabular-nums; letter-spacing: -0.04em; line-height: 1; } .ds-cell[data-value=\"0\"] { border-color: #d8e1ed; background: var(--empty); } .ds-board:focus-visible { outline: 3px solid var(--focus); outline-offset: 3px; }"
+    },
+    {
+      "name": "Prime Tile",
+      "kind": "custom",
+      "refersTo": "game-tile",
+      "description": "Stable tabular numeral cell with a brief corner-marked merge state.",
+      "html": "<div class=\"ds-tile ds-just-merged\" role=\"gridcell\" aria-label=\"Row 1, column 1: 5, prime tile\" data-value=\"5\">5</div>",
+      "css": ".ds-tile { position: relative; display: flex; min-width: 0; min-height: 0; align-items: center; justify-content: center; overflow: hidden; border: 1px solid #c5d3e4; border-radius: 5px; background: #d6e2f0; color: var(--navy); font-size: clamp(22px, 5.2vw, 48px); font-weight: 760; font-variant-numeric: tabular-nums; letter-spacing: -0.04em; line-height: 1; transition: background-color 140ms ease, color 140ms ease; } .ds-tile[data-value=\"0\"] { border-color: #d8e1ed; background: var(--empty); } .ds-tile[data-value=\"1\"], .ds-tile[data-value=\"2\"] { background: #e7edf5; } .ds-tile[data-value=\"3\"], .ds-tile[data-value=\"4\"] { background: #d6e2f0; } .ds-tile[data-value=\"5\"], .ds-tile[data-value=\"6\"] { background: #bfd1e7; } .ds-tile[data-value=\"7\"], .ds-tile[data-value=\"8\"], .ds-tile[data-value=\"9\"], .ds-tile[data-value=\"10\"], .ds-tile[data-value=\"11\"], .ds-tile[data-value=\"12\"], .ds-tile[data-value=\"13\"], .ds-tile[data-value=\"14\"], .ds-tile[data-value=\"15\"], .ds-tile[data-value=\"16\"] { background: #a9c2e0; } .ds-tile.ds-just-merged::after { position: absolute; top: 0; right: 0; width: clamp(9px, 2.4vw, 15px); height: clamp(9px, 2.4vw, 15px); border-top: 3px solid var(--coral); border-right: 3px solid var(--coral); content: \"\"; } .ds-tile.ds-just-merged { animation: ds-prime-build 360ms cubic-bezier(0.16, 1, 0.3, 1); } @keyframes ds-prime-build { 0% { background: #f3b2a1; box-shadow: inset 0 0 0 3px var(--coral); } 100% { background: #bfd1e7; box-shadow: inset 0 0 0 0 transparent; } } @media (prefers-reduced-motion: reduce) { .ds-tile { transition-duration: 0.01ms !important; animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; } }"
+    },
+    {
+      "name": "Display Name Field",
+      "kind": "input",
+      "refersTo": "text-field",
+      "description": "Compact white name field with a shared visible focus treatment and disabled state.",
+      "html": "<label class=\"ds-field-label\" for=\"ds-display-name\">Display name</label><input class=\"ds-field\" id=\"ds-display-name\" type=\"text\" autocomplete=\"nickname\" aria-describedby=\"ds-name-help\">",
+      "css": ".ds-field-label { display: block; margin-bottom: 6px; font: 700 13px/1.55 system-ui, -apple-system, BlinkMacSystemFont, \"Segoe UI\", sans-serif; color: var(--ink); } .ds-field { width: min(220px, 100%); min-height: 46px; padding: 9px 12px; border: 1px solid #8195b0; border-radius: 8px; background: #fff; color: var(--ink); caret-color: var(--coral); font: inherit; } .ds-field:focus-visible { outline: 3px solid var(--focus); outline-offset: 3px; } .ds-field:disabled { background: #e7edf5; }"
+    },
+    {
+      "name": "Stat Row",
+      "kind": "custom",
+      "refersTo": "stat-row",
+      "description": "Open divider-separated readout keeping a descriptive label and tabular value distinct.",
+      "html": "<dl class=\"ds-stat-list\"><div class=\"ds-stat-row\"><dt>Score</dt><dd>2,048</dd></div></dl>",
+      "css": ".ds-stat-list { margin: 16px 0 0; } .ds-stat-row { display: flex; min-height: 56px; align-items: center; justify-content: space-between; gap: 12px; padding: 8px 0; border-top: 1px solid #d5deea; } .ds-stat-row dt { color: var(--ink-soft); font-size: 14px; font-weight: 650; } .ds-stat-row dd { margin: 0; color: var(--navy); font-size: 23px; font-variant-numeric: tabular-nums; font-weight: 760; letter-spacing: -0.035em; text-align: right; }"
+    }
+  ],
+  "narrative": {
+    "northStar": "The Prime Construction Grid",
+    "overview": "Prime Swipe's visual signature is a small, geometric identity mark and a square game matrix. The self-hosted Aldrich face gives the wordmark and lead heading a distinct, grid-conscious voice; the system sans carries actions, rules, feedback, and values so play stays legible.\n\nCool pale surfaces and deep navy ink frame construction-blue structure. Coral appears as a compact signal for focus and meaningful game states. Geometry belongs to the board and its measured cells rather than to background decoration: the board is the largest control on desktop and leads the stacked layout on narrow screens.",
+    "keyCharacteristics": [
+      "A visible four-by-four construction grid with stable square cells.",
+      "Aldrich display lettering paired with a system-sans interface.",
+      "Pale blue-white surfaces, navy ink, construction blue, and restrained coral signals.",
+      "Responsive, keyboard- and touch-operable game controls with visible focus and reduced motion."
+    ],
+    "rules": [
+      {
+        "name": "The Signal Economy Rule",
+        "body": "Keep coral attached to a meaningful state, focus, or identity detail; do not turn it into a broad decorative fill.",
+        "section": "colors"
+      },
+      {
+        "name": "The Two-Voice Rule",
+        "body": "Keep Aldrich to the wordmark and lead heading; use the system sans for operating text and game data.",
+        "section": "typography"
+      },
+      {
+        "name": "The Square-Board Rule",
+        "body": "Preserve a square, evenly divided 4×4 board as the visual and interaction center at every breakpoint.",
+        "section": "layout"
+      },
+      {
+        "name": "The Cell Geometry Rule",
+        "body": "Keep cells equal, square, and clearly separated; corner rounding stays secondary to the measured grid.",
+        "section": "shapes"
+      }
+    ],
+    "dos": [
+      "**Do** retain the responsive square 4×4 board and its equal cell geometry.",
+      "**Do** use the coral outline for keyboard focus and the coral mark for meaningful merge or goal states.",
+      "**Do** keep Score, largest-prime Best, and goal status visually distinct; use tabular numerals for game data.",
+      "**Do** preserve the system-sans workhorse and the self-hosted Aldrich display roles.",
+      "**Do** respect reduced-motion preferences and keep the board usable by touch and keyboard."
+    ],
+    "donts": [
+      "**Don't** use coral as a broad decorative color; its role is a compact signal.",
+      "**Don't** spread Aldrich across dense rules, controls, and game data.",
+      "**Don't** reshape the board or vary cell geometry to create decoration.",
+      "**Don't** repeat the existing outlined-board/dialog plus soft-shadow pairing as a new surface recipe; it is source drift, not a depth token."
+    ]
+  }
+}

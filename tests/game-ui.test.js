@@ -1,0 +1,459 @@
+const test = require('node:test')
+const assert = require('node:assert/strict')
+const fs = require('node:fs')
+const path = require('node:path')
+const vm = require('node:vm')
+const GameEngine = require('../game-engine')
+
+const ids = [
+  'grid', 'score', 'best-prime', 'goal-status', 'goal-note', 'game-status',
+  'new-game', 'game-over-dialog', 'game-over-title', 'final-score',
+  'final-largest-prime', 'final-moves', 'final-duration', 'final-best',
+  'score-form', 'display-name', 'name-error', 'submit-score',
+  'submission-status', 'play-again', 'close-summary', 'load-leaderboard',
+  'leaderboard-status', 'leaderboard-table-wrap', 'leaderboard-entries'
+]
+
+class FakeElement {
+  constructor() {
+    this.children = []
+    this.dataset = {}
+    this.attributes = {}
+    this.listeners = new Map()
+    this.className = ''
+    this.hidden = false
+    this.disabled = false
+    this.value = ''
+    this.textContent = ''
+    this.open = false
+    this.classList = {
+      add: token => this.updateClass(token, true),
+      remove: token => this.updateClass(token, false),
+      toggle: (token, force) => {
+        const enabled = force ?? !this.className.split(/\s+/).includes(token)
+        this.updateClass(token, enabled)
+        return enabled
+      }
+    }
+  }
+
+  updateClass(token, enabled) {
+    const classes = new Set(this.className.split(/\s+/).filter(Boolean))
+    if (enabled) {
+      classes.add(token)
+    } else {
+      classes.delete(token)
+    }
+    this.className = [...classes].join(' ')
+  }
+
+  addEventListener(type, listener) {
+    if (!this.listeners.has(type)) {
+      this.listeners.set(type, new Set())
+    }
+    this.listeners.get(type).add(listener)
+  }
+
+  removeEventListener(type, listener) {
+    this.listeners.get(type)?.delete(listener)
+  }
+
+  dispatch(type, properties = {}) {
+    const event = {
+      type,
+      target: this,
+      preventDefault() { this.defaultPrevented = true },
+      ...properties
+    }
+    for (const listener of this.listeners.get(type) ?? []) {
+      listener(event)
+    }
+    return event
+  }
+
+  appendChild(child) {
+    this.children.push(child)
+    return child
+  }
+
+  replaceChildren(...children) {
+    this.children = children
+  }
+
+  setAttribute(name, value) {
+    this.attributes[name] = value
+  }
+
+  removeAttribute(name) {
+    delete this.attributes[name]
+  }
+
+  closest() {
+    return null
+  }
+
+  focus() {
+    this.focused = true
+  }
+
+  showModal() {
+    this.open = true
+    this.hidden = false
+  }
+
+  close() {
+    this.open = false
+    this.dispatch('close')
+  }
+}
+
+function cloneState(state) {
+  return {
+    ...state,
+    board: state.board.slice(),
+    unlockedTiles: (state.unlockedTiles || []).slice()
+  }
+}
+
+function makeApi(overrides = {}) {
+  const calls = { rank: [], submissions: [], leaderboard: 0 }
+  return {
+    calls,
+    api: {
+      async getProjectedRank(payload) {
+        calls.rank.push(payload)
+        return overrides.rank
+          ? overrides.rank(payload)
+          : { rank: 1, qualifies: true, leaderboardLimit: 100, source: 'backend' }
+      },
+      async submitScore(payload) {
+        calls.submissions.push({ ...payload })
+        if (overrides.submitScore) {
+          return overrides.submitScore(payload)
+        }
+        return {
+          displayName: payload.displayName,
+          score: payload.score,
+          largestPrime: payload.largestPrime,
+          rank: 1,
+          source: 'backend'
+        }
+      },
+      async getLeaderboard() {
+        calls.leaderboard += 1
+        return overrides.leaderboard
+          ? overrides.leaderboard()
+          : {
+            entries: [],
+            limit: 100,
+            source: 'backend'
+          }
+      }
+    }
+  }
+}
+
+function createApp({ api, initialState, outcome, storageError = null } = {}) {
+  const elements = new Map(ids.map(id => [id, new FakeElement()]))
+  elements.get('grid').setAttribute('role', 'grid')
+  elements.get('grid').setAttribute('aria-label', 'Prime Swipe 4 by 4 game board')
+  const document = new FakeElement()
+  document.body = new FakeElement()
+  document.getElementById = id => elements.get(id)
+  document.createElement = () => new FakeElement()
+  const stored = new Map()
+  const localStorage = {
+    getItem(key) {
+      if (storageError === 'read') {
+        throw new Error('storage disabled')
+      }
+      return stored.get(key) ?? null
+    },
+    setItem(key, value) {
+      if (storageError === 'write') {
+        throw new Error('storage disabled')
+      }
+      stored.set(key, value)
+    }
+  }
+  let firstGame = true
+  const engine = {
+    ...GameEngine,
+    createGame() {
+      if (firstGame && initialState) {
+        firstGame = false
+        return cloneState(initialState)
+      }
+      firstGame = false
+      return GameEngine.createGame(() => 0.1)
+    },
+    move(state, direction) {
+      if (outcome) {
+        return {
+          ...outcome,
+          state: cloneState(outcome.state),
+          mergedValues: outcome.mergedValues || [],
+          mergedIndices: outcome.mergedIndices || []
+        }
+      }
+      return GameEngine.move(state, direction, () => 0)
+    }
+  }
+  const script = fs.readFileSync(path.join(__dirname, '..', 'functions.js'), 'utf8')
+  vm.runInNewContext(script, {
+    document,
+    GameEngine: engine,
+    LeaderboardAPI: api || makeApi().api,
+    localStorage,
+    crypto: { randomUUID: () => 'fixed-run-id' },
+    Date,
+    Intl,
+    Math
+  })
+  document.dispatch('DOMContentLoaded')
+  return { document, elements, grid: elements.get('grid'), stored }
+}
+
+function gameWith(values, overrides = {}) {
+  const board = Array(16).fill(0)
+  for (const [index, value] of Object.entries(values)) {
+    board[Number(index)] = value
+  }
+  return {
+    board,
+    score: 0,
+    largestPrime: 0,
+    goalAchieved: false,
+    unlockedTiles: [],
+    status: 'playing',
+    ...overrides
+  }
+}
+
+async function settle() {
+  await new Promise(resolve => setImmediate(resolve))
+  await new Promise(resolve => setImmediate(resolve))
+}
+
+test('initial UI presents two different-parity tiles and an accessible 4×4 grid', () => {
+  const app = createApp()
+  const tiles = app.grid.children.flatMap(row => row.children)
+  const occupied = tiles.filter(tile => tile.dataset.value !== '0').map(tile => Number(tile.dataset.value))
+
+  assert.equal(app.grid.children.length, 4)
+  assert.ok(app.grid.children.every(row => row.children.length === 4))
+  assert.equal(occupied.length, 2)
+  assert.equal(occupied.filter(value => value % 2).length, 1)
+  assert.equal(occupied.filter(value => value % 2 === 0).length, 1)
+  assert.equal(app.grid.attributes.role, 'grid')
+  assert.match(tiles.find(tile => tile.dataset.value !== '0').attributes['aria-label'], /Row \d, column \d: \d/)
+})
+
+test('keyboard merge updates Score, largest-prime Best, and local persistence', () => {
+  const app = createApp({ initialState: gameWith({ 0: 1, 1: 1 }) })
+  app.document.dispatch('keydown', { key: 'ArrowLeft' })
+
+  assert.equal(app.elements.get('score').textContent, '2')
+  assert.equal(app.elements.get('best-prime').textContent, '2')
+  assert.equal(app.stored.get('prime-swipe-best-prime'), '2')
+  assert.match(app.elements.get('game-status').textContent, /Built prime tile 2/)
+  assert.match(app.elements.get('game-status').textContent, /One new tile spawned/)
+})
+
+test('merge feedback marks only the destination when another tile has the same value', () => {
+  const app = createApp({ initialState: gameWith({ 0: 1, 1: 2, 8: 3 }) })
+  app.document.dispatch('keydown', { key: 'ArrowLeft' })
+  const tiles = app.grid.children.flatMap(row => row.children)
+
+  assert.ok(tiles[0].className.split(/\s+/).includes('just-merged'))
+  assert.equal(tiles[8].className.split(/\s+/).includes('just-merged'), false)
+  assert.equal(tiles[8].dataset.prime, undefined)
+})
+
+test('pointer swipe moves the board and merges through the touch input surface', () => {
+  const app = createApp({ initialState: gameWith({ 0: 1, 1: 2 }) })
+  app.grid.dispatch('pointerdown', { clientX: 120, clientY: 120, button: 0, pointerId: 1 })
+  app.grid.dispatch('pointerup', { clientX: 65, clientY: 120, pointerId: 1 })
+
+  assert.equal(app.elements.get('score').textContent, '3')
+  assert.equal(app.elements.get('best-prime').textContent, '3')
+})
+
+test('invalid move does not spawn and local-storage failures are explicit', () => {
+  const app = createApp({ initialState: gameWith({ 0: 2 }) })
+  app.document.dispatch('keydown', { key: 'ArrowLeft' })
+  assert.equal(app.elements.get('score').textContent, '0')
+  assert.equal(app.elements.get('game-status').textContent, 'No tiles moved. No new tile spawned.')
+
+  const storageFailure = createApp({
+    initialState: gameWith({ 0: 2 }),
+    storageError: 'read'
+  })
+  assert.match(storageFailure.elements.get('game-status').textContent, /Local storage is unavailable/)
+})
+
+test('building exactly 101 marks the goal but leaves the game running', () => {
+  const app = createApp({ initialState: gameWith({ 0: 45, 1: 56 }) })
+  app.document.dispatch('keydown', { key: 'a' })
+
+  assert.equal(app.elements.get('score').textContent, '101')
+  assert.equal(app.elements.get('best-prime').textContent, '101')
+  assert.equal(app.elements.get('goal-status').textContent, 'Reached — keep playing')
+  assert.equal(app.elements.get('game-over-dialog').open, false)
+  assert.match(app.elements.get('goal-note').textContent, /run continues/)
+})
+
+test('terminal merge announcement preserves its merge, spawn, and game-over status', () => {
+  const board = Array(16).fill(25)
+  board[0] = 1
+  board[1] = 2
+  const initialState = gameWith({})
+  initialState.board = board
+  const app = createApp({ initialState })
+
+  app.document.dispatch('keydown', { key: 'ArrowLeft' })
+
+  const announcement = app.elements.get('game-status').textContent
+  assert.match(announcement, /Built prime tile 3/)
+  assert.match(announcement, /Score \+3/)
+  assert.match(announcement, /One new tile spawned/)
+  assert.match(announcement, /Game over/)
+  assert.equal(app.elements.get('game-over-dialog').open, true)
+})
+
+test('game-over dialog presents distinct run summary values and replay works', () => {
+  const finished = gameWith({}, {
+    score: 850,
+    largestPrime: 101,
+    status: 'game-over'
+  })
+  const app = createApp({
+    initialState: gameWith({ 0: 2 }),
+    outcome: { state: finished, moved: true, scoreDelta: 0, mergedValues: [] }
+  })
+  app.document.dispatch('keydown', { key: 'ArrowRight' })
+
+  assert.equal(app.elements.get('game-over-dialog').open, true)
+  assert.equal(app.elements.get('final-score').textContent, '850')
+  assert.equal(app.elements.get('final-largest-prime').textContent, '101')
+  assert.equal(app.elements.get('final-best').textContent, '101')
+  assert.match(app.elements.get('game-status').textContent, /One new tile spawned/)
+  app.elements.get('play-again').dispatch('click')
+  assert.equal(app.elements.get('game-over-dialog').open, false)
+  assert.equal(app.elements.get('score').textContent, '0')
+})
+
+test('opt-in submission sends separate run metrics and confirms only backend response', async () => {
+  const calls = makeApi()
+  const finished = gameWith({}, {
+    score: 2400,
+    largestPrime: 101,
+    status: 'game-over'
+  })
+  const app = createApp({
+    api: calls.api,
+    initialState: gameWith({ 0: 2 }),
+    outcome: { state: finished, moved: true, scoreDelta: 0, mergedValues: [] }
+  })
+  app.document.dispatch('keydown', { key: 'ArrowRight' })
+  app.elements.get('display-name').value = 'ACE'
+  app.elements.get('score-form').dispatch('submit')
+  await settle()
+
+  assert.equal(calls.calls.rank.length, 1)
+  assert.equal(calls.calls.rank[0].score, 2400)
+  assert.equal(calls.calls.submissions.length, 1)
+  assert.equal(calls.calls.submissions[0].score, 2400)
+  assert.equal(calls.calls.submissions[0].largestPrime, 101)
+  assert.equal(calls.calls.submissions[0].submissionId, 'prime-swipe-fixed-run-id')
+  assert.match(app.elements.get('submission-status').textContent, /Score confirmed by the server/)
+})
+
+test('a non-qualifying rank preview never submits a run', async () => {
+  const calls = makeApi({
+    rank: async () => ({
+      rank: null,
+      qualifies: false,
+      leaderboardLimit: 100,
+      source: 'backend'
+    })
+  })
+  const finished = gameWith({}, { score: 2, status: 'game-over' })
+  const app = createApp({
+    api: calls.api,
+    initialState: gameWith({ 0: 2 }),
+    outcome: { state: finished, moved: true, scoreDelta: 0, mergedValues: [] }
+  })
+  app.document.dispatch('keydown', { key: 'ArrowRight' })
+  app.elements.get('display-name').value = 'ACE'
+  app.elements.get('score-form').dispatch('submit')
+  await settle()
+
+  assert.equal(calls.calls.submissions.length, 0)
+  assert.match(app.elements.get('submission-status').textContent, /was not submitted/)
+})
+
+test('failed submission is not shown as success and retry uses the same payload key', async () => {
+  let attempts = 0
+  const calls = makeApi({
+    submitScore: async payload => {
+      attempts += 1
+      if (attempts === 1) {
+        throw new Error('network unavailable')
+      }
+      return {
+        displayName: payload.displayName,
+        score: payload.score,
+        largestPrime: payload.largestPrime,
+        rank: 2,
+        source: 'backend'
+      }
+    }
+  })
+  const finished = gameWith({}, {
+    score: 20,
+    largestPrime: 5,
+    status: 'game-over'
+  })
+  const app = createApp({
+    api: calls.api,
+    initialState: gameWith({ 0: 2 }),
+    outcome: { state: finished, moved: true, scoreDelta: 0, mergedValues: [] }
+  })
+  app.document.dispatch('keydown', { key: 'ArrowRight' })
+  app.elements.get('display-name').value = 'ACE'
+  app.elements.get('score-form').dispatch('submit')
+  await settle()
+  assert.match(app.elements.get('submission-status').textContent, /did not confirm/)
+  assert.equal(app.elements.get('submit-score').textContent, 'Retry submission')
+
+  app.elements.get('score-form').dispatch('submit')
+  await settle()
+  assert.equal(calls.calls.submissions.length, 2)
+  assert.deepEqual(calls.calls.submissions[0], calls.calls.submissions[1])
+  assert.match(app.elements.get('submission-status').textContent, /rank 2/)
+})
+
+test('leaderboard control fetches entries and keeps values in separate columns', async () => {
+  const calls = makeApi({
+    leaderboard: async () => ({
+      entries: [{
+        rank: 1,
+        displayName: 'ACE',
+        score: 2400,
+        largestPrime: 101,
+        submittedAt: '2026-11-05T10:00:00.000Z'
+      }],
+      limit: 100,
+      source: 'backend'
+    })
+  })
+  const app = createApp({ api: calls.api })
+  app.elements.get('load-leaderboard').dispatch('click')
+  await settle()
+
+  assert.equal(calls.calls.leaderboard, 1)
+  const row = app.elements.get('leaderboard-entries').children[0]
+  assert.deepEqual(row.children.map(cell => cell.textContent), ['1', 'ACE', '2,400', '101'])
+  assert.equal(app.elements.get('leaderboard-table-wrap').hidden, false)
+})
