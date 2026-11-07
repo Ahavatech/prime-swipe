@@ -6,7 +6,8 @@ import Database from 'better-sqlite3'
 const migrationsDirectory = fileURLToPath(new URL('./migrations/', import.meta.url))
 const migrations = [
   { version: 1, file: '001_initial.sql' },
-  { version: 2, file: '002_add_largest_prime.sql' }
+  { version: 2, file: '002_add_largest_prime.sql' },
+  { version: 3, file: '003_verified_runs.sql' }
 ]
 
 export function createDatabase(databasePath, { production = false, busyTimeout = 5000 } = {}) {

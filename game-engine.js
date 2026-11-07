@@ -15,6 +15,16 @@
   const SECOND_UNLOCK = Object.freeze([14, 16])
   const MILLER_RABIN_WITNESSES = Object.freeze([2n, 325n, 9375n, 28178n, 450775n, 9780504n, 1795265022n])
 
+  // Bump this on ANY change that alters how a seeded game plays out: spawn weights, unlock
+  // thresholds, merge rules, how many random numbers are drawn or in what order, or the PRNG.
+  // The server refuses to verify a run that started under a different version, and the golden
+  // run in the backend tests fails until you bump it and regenerate the fixture.
+  const ENGINE_VERSION = '1'
+
+  // A run is logged as one letter per effective move.
+  const MOVE_CODES = Object.freeze({ U: 'up', D: 'down', L: 'left', R: 'right' })
+  const DIRECTION_CODES = Object.freeze({ up: 'U', down: 'D', left: 'L', right: 'R' })
+
   function randomUnit(random) {
     const value = random()
     if (typeof value !== 'number' || !Number.isFinite(value) || value < 0 || value > 1) {
@@ -25,6 +35,22 @@
 
   function randomIndex(length, random) {
     return Math.floor(randomUnit(random) * length)
+  }
+
+  // mulberry32. Small and fast, with 32 bits of state, so there are only 2^32 distinct games.
+  // It does not need to be unpredictable, because the player is given the seed. It needs to be
+  // identical in every browser and in Node: only integer ops and one division by 2^32.
+  function createSeededRandom(seed) {
+    if (!Number.isInteger(seed) || seed < 0 || seed > 0xffffffff) {
+      throw new RangeError('Seed must be an unsigned 32-bit integer.')
+    }
+    let state = seed | 0
+    return function random() {
+      state = (state + 0x6d2b79f5) | 0
+      let t = Math.imul(state ^ (state >>> 15), 1 | state)
+      t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t
+      return ((t ^ (t >>> 14)) >>> 0) / 4294967296
+    }
   }
 
   function modPow(base, exponent, modulus) {
@@ -301,15 +327,52 @@
     return { state: spawnedState, moved: true, scoreDelta, mergedValues, mergedIndices, merges }
   }
 
+  // Plays a logged run from its seed. The log is untrusted input, so a bad log is a result
+  // ({ ok: false }), not an exception. It follows the same protocol as the browser: one random
+  // source per run; createGame draws first, then every effective move draws for its spawn.
+  // A move that changes nothing is invalid. The browser never logs one, and refusing it means
+  // a game has exactly one valid log, with no padding and no alternative spellings.
+  function replay(seed, moveLog) {
+    if (typeof moveLog !== 'string') {
+      throw new TypeError('moveLog must be a string.')
+    }
+    const random = createSeededRandom(seed)
+    let state = createGame(random)
+
+    for (let index = 0; index < moveLog.length; index += 1) {
+      const code = moveLog[index]
+      // Defence in depth. Every code today is one character, and Object.prototype has no
+      // one-character properties, so a plain lookup would be safe. This keeps it safe if a code
+      // ever becomes longer. No test can tell the two apart, so none claims to.
+      if (!Object.prototype.hasOwnProperty.call(MOVE_CODES, code)) {
+        return { ok: false, reason: 'UNKNOWN_MOVE', index }
+      }
+      if (state.status !== 'playing') {
+        return { ok: false, reason: 'MOVE_AFTER_GAME_OVER', index }
+      }
+      const outcome = move(state, MOVE_CODES[code], random)
+      if (!outcome.moved) {
+        return { ok: false, reason: 'MOVE_DID_NOTHING', index }
+      }
+      state = outcome.state
+    }
+    return { ok: true, state, moveCount: moveLog.length }
+  }
+
   return {
     BASE_SPAWN_WEIGHTS,
+    DIRECTION_CODES,
+    MOVE_CODES,
     SIZE,
+    VERSION: ENGINE_VERSION,
     createGame,
+    createSeededRandom,
     getSpawnDistribution,
     hasLegalMerge,
     isGameOver,
     isPrime,
     move,
+    replay,
     spawnTile,
     unlockForBoard
   }

@@ -3,7 +3,7 @@ import { createLeaderboardController } from '../controllers/leaderboard-controll
 import { checkDatabase } from '../db/database.js'
 import { HttpError } from '../utils/http-error.js'
 
-export function createApiRouter({ db, service }) {
+export function createApiRouter({ db, service, submitRateLimit }) {
   const router = Router()
   const controller = createLeaderboardController(service)
 
@@ -21,7 +21,8 @@ export function createApiRouter({ db, service }) {
     }
   })
   router.get('/leaderboard/rank', controller.getProjectedRank)
-  router.post('/scores', controller.submitScore)
+  router.post('/runs', submitRateLimit, controller.startRun)
+  router.post('/scores', submitRateLimit, controller.submitScore)
   router.get('/leaderboard', controller.getLeaderboard)
   return router
 }

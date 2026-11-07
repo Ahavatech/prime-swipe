@@ -11,6 +11,9 @@ export function createCorsMiddleware(allowedOrigins) {
     if (origin) {
       res.set('Access-Control-Allow-Origin', origin)
       res.set('Access-Control-Allow-Methods', 'GET, POST, OPTIONS')
+      // Idempotency-Key is no longer used (the run id is the idempotency key). It stays allowed
+      // so an older client reaches the API and gets the explicit RUN_TOKEN_REQUIRED error
+      // instead of an opaque browser CORS failure.
       res.set('Access-Control-Allow-Headers', 'Content-Type, Idempotency-Key')
       res.set('Access-Control-Max-Age', '600')
     }

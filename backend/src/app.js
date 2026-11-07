@@ -8,10 +8,20 @@ import { createCorsMiddleware } from './middleware/cors.js'
 import { createRateLimitMiddleware } from './middleware/rate-limit.js'
 import { errorHandler, notFoundHandler } from './middleware/error-handler.js'
 import { openApiSpec } from './openapi.js'
+import { GameEngine } from './engine/index.js'
+import { createRunTokenCodec } from './services/run-token.js'
 
-export function createApp({ config = loadConfig(), database } = {}) {
+// `clock`, `logger` and `randomSeed` exist so tests can control time, silence expected
+// warnings, and pin seeds. Production uses the defaults.
+export function createApp({ config = loadConfig(), database, clock = Date.now, logger = console, randomSeed } = {}) {
   const db = database ?? createDatabase(config.databasePath, { production: config.nodeEnv === 'production' })
-  const service = createLeaderboardService(db)
+  const tokens = createRunTokenCodec({
+    secret: config.runTokenSecret,
+    ttlSeconds: config.runTokenTtlSeconds,
+    now: clock,
+    randomSeed
+  })
+  const service = createLeaderboardService({ db, tokens, engine: GameEngine, now: clock, logger })
   const app = express()
 
   app.disable('x-powered-by')
@@ -29,7 +39,16 @@ export function createApp({ config = loadConfig(), database } = {}) {
     explorer: false,
     swaggerOptions: { displayRequestDuration: true }
   }))
-  app.use('/api/v1', createApiRouter({ db, service }))
+  app.use('/api/v1', createApiRouter({
+    db,
+    service,
+    // Starting and submitting a run are the only endpoints that cost real work (a replay),
+    // so they get their own, tighter per-IP counter on top of the global one.
+    submitRateLimit: createRateLimitMiddleware({
+      windowMs: config.rateLimitWindowMs,
+      max: config.submitRateLimitMax
+    })
+  }))
   app.use(notFoundHandler)
   app.use(errorHandler)
 

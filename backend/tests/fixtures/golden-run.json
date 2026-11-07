@@ -1,0 +1,29 @@
+{
+  "engineVersion": "1",
+  "seed": 424242,
+  "moveLog": "LULULLUUDULULLUULUDLULDLULUULUURUUUDULLULUUULURLUUDLL",
+  "expected": {
+    "moveCount": 53,
+    "score": 689,
+    "largestPrime": 43,
+    "status": "game-over",
+    "board": [
+      19,
+      31,
+      43,
+      2,
+      8,
+      13,
+      7,
+      19,
+      7,
+      19,
+      2,
+      2,
+      43,
+      8,
+      4,
+      6
+    ]
+  }
+}
