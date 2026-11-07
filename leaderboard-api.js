@@ -206,7 +206,8 @@
           !NAME_PATTERN.test(entry.displayName) ||
           !isSafeNonNegativeInteger(entry.score) ||
           !isSafeNonNegativeInteger(entry.largestPrime) ||
-          !isLargestPrime(entry.largestPrime) ||
+          typeof entry.verified !== 'boolean' ||
+          (entry.verified && !isLargestPrime(entry.largestPrime)) ||
           typeof entry.submittedAt !== 'string' ||
           Number.isNaN(Date.parse(entry.submittedAt))
         ) {

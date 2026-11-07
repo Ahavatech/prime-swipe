@@ -486,7 +486,7 @@ document.addEventListener('DOMContentLoaded', () => {
   async function loadLeaderboard() {
     loadLeaderboardButton.disabled = true
     leaderboardTableWrap.hidden = true
-    leaderboardStatus.textContent = 'Loading verified leaderboard entries…'
+    leaderboardStatus.textContent = 'Loading leaderboard entries…'
     try {
       const result = await LeaderboardAPI.getLeaderboard()
       if (result.source !== 'backend') {
@@ -503,7 +503,8 @@ document.addEventListener('DOMContentLoaded', () => {
           formatNumber(entry.rank),
           entry.displayName,
           formatNumber(entry.score),
-          formatNumber(entry.largestPrime)
+          formatNumber(entry.largestPrime),
+          entry.verified ? 'Verified' : 'Legacy (unverified)'
         ]) {
           const cell = document.createElement('td')
           cell.textContent = value
@@ -512,7 +513,7 @@ document.addEventListener('DOMContentLoaded', () => {
         leaderboardEntries.appendChild(row)
       })
       leaderboardTableWrap.hidden = false
-      leaderboardStatus.textContent = `Showing ${result.entries.length} server-ranked runs. Score and largest prime are separate values.`
+      leaderboardStatus.textContent = `Showing ${result.entries.length} scores ordered by Score. Legacy entries are labeled because they were not replay-verified.`
     } catch (error) {
       showLeaderboardError(error)
     } finally {

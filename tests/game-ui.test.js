@@ -563,16 +563,27 @@ test('failed submission is not shown as success and retry reuses the same run pr
   assert.match(app.elements.get('submission-status').textContent, /rank 2/)
 })
 
-test('leaderboard control fetches entries and keeps values in separate columns', async () => {
+test('leaderboard control interleaves entries and labels legacy verification status', async () => {
   const calls = makeApi({
     leaderboard: async () => ({
-      entries: [{
-        rank: 1,
-        displayName: 'ACE',
-        score: 2400,
-        largestPrime: 101,
-        submittedAt: '2026-11-05T10:00:00.000Z'
-      }],
+      entries: [
+        {
+          rank: 1,
+          displayName: 'ACE',
+          score: 2400,
+          largestPrime: 101,
+          submittedAt: '2026-11-05T10:00:00.000Z',
+          verified: true
+        },
+        {
+          rank: 2,
+          displayName: 'OLD ACE',
+          score: 1200,
+          largestPrime: 12,
+          submittedAt: '2026-11-04T10:00:00.000Z',
+          verified: false
+        }
+      ],
       limit: 100,
       source: 'backend'
     })
@@ -584,8 +595,9 @@ test('leaderboard control fetches entries and keeps values in separate columns',
 
   assert.equal(app.elements.get('leaderboard-dialog').open, true)
   assert.equal(calls.calls.leaderboard, 1)
-  const row = app.elements.get('leaderboard-entries').children[0]
-  assert.deepEqual(row.children.map(cell => cell.textContent), ['1', 'ACE', '2,400', '101'])
+  const rows = app.elements.get('leaderboard-entries').children
+  assert.deepEqual(rows[0].children.map(cell => cell.textContent), ['1', 'ACE', '2,400', '101', 'Verified'])
+  assert.deepEqual(rows[1].children.map(cell => cell.textContent), ['2', 'OLD ACE', '1,200', '12', 'Legacy (unverified)'])
   assert.equal(app.elements.get('leaderboard-table-wrap').hidden, false)
   app.elements.get('close-leaderboard').dispatch('click')
   assert.equal(app.elements.get('leaderboard-dialog').open, false)

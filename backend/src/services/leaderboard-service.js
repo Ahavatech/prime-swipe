@@ -4,7 +4,7 @@ import { verifyRun } from './run-verifier.js'
 export const LEADERBOARD_LIMIT = 100
 
 export function createLeaderboardService({ db, tokens, engine, now = Date.now, logger = console }) {
-  // Only verified rows count anywhere: rank previews, ranks at submission, and the public list.
+  // Only verified rows can be submitted or retried through the run-token API.
   const findExisting = db.prepare(`
     SELECT display_name AS displayName,
            score,
@@ -22,7 +22,7 @@ export function createLeaderboardService({ db, tokens, engine, now = Date.now, l
       verified, seed, engine_version, move_log
     ) VALUES (?, ?, ?, ?, ?, ?, 1, ?, 1, ?, ?, ?)
   `)
-  const countHigherScores = db.prepare('SELECT COUNT(*) AS count FROM scores WHERE verified = 1 AND score > ?')
+  const countHigherScores = db.prepare('SELECT COUNT(*) AS count FROM scores WHERE score > ?')
   const findId = db.prepare('SELECT id FROM scores WHERE idempotency_key = ?')
   const updateRank = db.prepare('UPDATE scores SET submission_rank = ? WHERE id = ?')
   const listEntries = db.prepare(`
@@ -30,9 +30,9 @@ export function createLeaderboardService({ db, tokens, engine, now = Date.now, l
            display_name AS displayName,
            score,
            largest_prime AS largestPrime,
-           submitted_at AS submittedAt
+           submitted_at AS submittedAt,
+           verified
     FROM scores
-    WHERE verified = 1
     ORDER BY score DESC, submitted_at ASC, id ASC
     LIMIT ?
   `)
@@ -159,7 +159,10 @@ export function createLeaderboardService({ db, tokens, engine, now = Date.now, l
 
     getLeaderboard() {
       return {
-        entries: listEntries.all(LEADERBOARD_LIMIT),
+        entries: listEntries.all(LEADERBOARD_LIMIT).map(entry => ({
+          ...entry,
+          verified: entry.verified === 1
+        })),
         limit: LEADERBOARD_LIMIT
       }
     }

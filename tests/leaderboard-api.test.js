@@ -142,7 +142,7 @@ test('run submission errors have plain recovery messages', async () => {
   }
 })
 
-test('leaderboard validates distinct score and largestPrime response fields', async () => {
+test('leaderboard validates separate score, largestPrime and verification fields', async () => {
   const api = createLeaderboardApi({
     baseUrl: 'https://api.example.test',
     fetch: async () => jsonResponse({
@@ -151,7 +151,8 @@ test('leaderboard validates distinct score and largestPrime response fields', as
         displayName: 'ACE',
         score: 2000,
         largestPrime: 101,
-        submittedAt: '2026-11-05T10:00:00.000Z'
+        submittedAt: '2026-11-05T10:00:00.000Z',
+        verified: true
       }],
       limit: 100
     })
@@ -160,7 +161,29 @@ test('leaderboard validates distinct score and largestPrime response fields', as
   const result = await api.getLeaderboard()
   assert.equal(result.entries[0].score, 2000)
   assert.equal(result.entries[0].largestPrime, 101)
+  assert.equal(result.entries[0].verified, true)
   assert.equal(result.source, 'backend')
+})
+
+test('legacy leaderboard entries may contain historical non-prime values', async () => {
+  const api = createLeaderboardApi({
+    baseUrl: 'https://api.example.test',
+    fetch: async () => jsonResponse({
+      entries: [{
+        rank: 1,
+        displayName: 'ACE',
+        score: 2000,
+        largestPrime: 12,
+        submittedAt: '2026-11-05T10:00:00.000Z',
+        verified: false
+      }],
+      limit: 100
+    })
+  })
+
+  const result = await api.getLeaderboard()
+  assert.equal(result.entries[0].verified, false)
+  assert.equal(result.entries[0].largestPrime, 12)
 })
 
 test('invalid success bodies and unavailable services never become success-shaped results', async () => {

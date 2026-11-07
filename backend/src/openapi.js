@@ -70,7 +70,7 @@ export const openApiSpec = {
     '/api/v1/leaderboard/rank': {
       get: {
         summary: 'Preview the rank for a cumulative Score',
-        description: 'Rank is 1 plus the number of verified scores strictly greater than the candidate. Equal scores share a rank; rank 100 qualifies. Advisory only: it does not submit or verify a run.',
+        description: 'Rank is 1 plus the number of verified and historical legacy scores strictly greater than the candidate. Equal scores share a rank; rank 100 qualifies. Advisory only: it does not submit or verify a run.',
         parameters: [{
           in: 'query',
           name: 'score',
@@ -140,7 +140,7 @@ export const openApiSpec = {
     '/api/v1/leaderboard': {
       get: {
         summary: 'Get the top 100 runs by cumulative Score',
-        description: 'Only verified runs appear. Entries are ordered by score descending, then UTC submission time and insertion order. Equal scores share competition rank. The largest prime is a separate field and never substitutes for Score.',
+        description: 'Verified runs and historical legacy scores appear together, ordered by score descending, then UTC submission time and insertion order. The verified field is false for legacy entries, which predate replay verification and must not be treated as verified. Equal scores share competition rank across both kinds of entry. The largest prime is a separate field and never substitutes for Score.',
         responses: {
           200: {
             description: 'Public entries without database IDs or idempotency keys.',
@@ -155,13 +155,14 @@ export const openApiSpec = {
                       maxItems: 100,
                       items: {
                         type: 'object',
-                        required: ['rank', 'displayName', 'score', 'largestPrime', 'submittedAt'],
+                        required: ['rank', 'displayName', 'score', 'largestPrime', 'submittedAt', 'verified'],
                         properties: {
                           rank: { type: 'integer', minimum: 1 },
                           displayName: { type: 'string' },
                           score: { type: 'integer', minimum: 0 },
                           largestPrime: { type: 'integer', minimum: 0 },
-                          submittedAt: { type: 'string', format: 'date-time' }
+                          submittedAt: { type: 'string', format: 'date-time' },
+                          verified: { type: 'boolean', description: 'False identifies a legacy score that has not been replay-verified.' }
                         }
                       }
                     },
