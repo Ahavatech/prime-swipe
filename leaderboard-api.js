@@ -18,6 +18,17 @@
 
   const NAME_PATTERN = /^[A-Za-z0-9 _-]{1,12}$/
   const PRIME_WITNESSES = [2n, 325n, 9375n, 28178n, 450775n, 9780504n, 1795265022n]
+  const RUN_ERROR_MESSAGES = Object.freeze({
+    RUN_TOKEN_REQUIRED: 'This game version cannot submit scores. Refresh the page to load the latest version.',
+    INVALID_RUN_TOKEN: 'This run could not be verified. Start a new game and try again.',
+    RUN_ALREADY_SUBMITTED: 'This run was already submitted. Start a new game to submit another score.',
+    ENGINE_VERSION_MISMATCH: 'The game rules have changed. Start a new game before submitting.',
+    RUN_EXPIRED: 'This run has expired. Start a new game before submitting.',
+    RUN_REJECTED: 'The move history could not be verified. Start a new game and try again.',
+    SCORE_MISMATCH: 'The score did not match the move history. Start a new game and try again.',
+    RUN_TOO_FAST: 'This run was submitted too quickly. Wait a moment, then retry.',
+    NOTHING_TO_RANK: 'This run did not earn a rankable score.'
+  })
 
   function isSafeNonNegativeInteger(value) {
     return Number.isSafeInteger(value) && value >= 0
@@ -133,11 +144,12 @@
 
         if (!response.ok) {
           const unavailable = [502, 503, 504].includes(response.status)
+          const code = unavailable ? 'UNAVAILABLE' : (body?.error?.code || 'REQUEST_FAILED')
           throw new LeaderboardApiError(
-            body?.error?.message || (unavailable
+            RUN_ERROR_MESSAGES[code] || body?.error?.message || (unavailable
               ? 'Leaderboard service is temporarily unavailable.'
               : 'Leaderboard service rejected the request.'),
-            unavailable ? 'UNAVAILABLE' : (body?.error?.code || 'REQUEST_FAILED'),
+            code,
             response.status
           )
         }
@@ -205,6 +217,28 @@
     }
 
     return {
+      async startRun() {
+        const result = await request('/api/v1/runs', { method: 'POST' })
+        if (
+          !result ||
+          typeof result.runToken !== 'string' ||
+          result.runToken.length < 1 ||
+          result.runToken.length > 512 ||
+          !Number.isInteger(result.seed) ||
+          result.seed < 0 ||
+          result.seed > 0xffffffff ||
+          typeof result.engineVersion !== 'string' ||
+          !result.engineVersion ||
+          typeof result.issuedAt !== 'string' ||
+          Number.isNaN(Date.parse(result.issuedAt)) ||
+          typeof result.expiresAt !== 'string' ||
+          Number.isNaN(Date.parse(result.expiresAt))
+        ) {
+          throw new LeaderboardApiError('Leaderboard service returned an invalid run.', 'INVALID_RESPONSE')
+        }
+        return { ...result, source: 'backend' }
+      },
+
       async getProjectedRank({ score }) {
         if (!isSafeNonNegativeInteger(score)) {
           throw new LeaderboardApiError('Score must be a non-negative safe integer.', 'INVALID_SCORE')
@@ -213,40 +247,36 @@
         return validateRank(await request(`/api/v1/leaderboard/rank?${query}`))
       },
 
-      async submitScore({ submissionId, displayName, score, largestPrime, moves, durationSeconds }) {
+      async submitScore({ displayName, runToken, moveLog, score }) {
         const normalizedName = typeof displayName === 'string'
           ? displayName.normalize('NFC').trim()
           : ''
         if (!NAME_PATTERN.test(normalizedName)) {
           throw new LeaderboardApiError('Enter a name using 1–12 letters, numbers, spaces, hyphens, or underscores.', 'INVALID_DISPLAY_NAME')
         }
-        if (!/^[A-Za-z0-9._:-]{1,128}$/.test(submissionId || '')) {
-          throw new LeaderboardApiError('The run submission key is invalid.', 'INVALID_IDEMPOTENCY_KEY')
+        if (typeof runToken !== 'string' || runToken.length < 1 || runToken.length > 512) {
+          throw new LeaderboardApiError('Start a new game before submitting this score.', 'INVALID_RUN_TOKEN')
+        }
+        if (typeof moveLog !== 'string' || !/^[UDLR]{1,5000}$/.test(moveLog)) {
+          throw new LeaderboardApiError('This run has an invalid move history.', 'INVALID_MOVE_LOG')
         }
         if (!isSafeNonNegativeInteger(score)) {
           throw new LeaderboardApiError('Score must be a non-negative safe integer.', 'INVALID_SCORE')
         }
-        if (!isSafeNonNegativeInteger(largestPrime) || !isLargestPrime(largestPrime)) {
-          throw new LeaderboardApiError('Largest prime must be zero or a prime safe integer.', 'INVALID_LARGEST_PRIME')
-        }
-        if (!isSafeNonNegativeInteger(moves) || !isSafeNonNegativeInteger(durationSeconds)) {
-          throw new LeaderboardApiError('Run statistics must be non-negative safe integers.', 'INVALID_RUN_STATS')
-        }
 
-        const payload = { displayName: normalizedName, score, largestPrime, moves, durationSeconds }
+        const payload = { displayName: normalizedName, runToken, moveLog, score }
         const result = await request('/api/v1/scores', {
           method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Idempotency-Key': submissionId
-          },
+          headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(payload)
         })
         if (
           !result ||
           result.displayName !== normalizedName ||
-          result.score !== score ||
-          result.largestPrime !== largestPrime ||
+          !isSafeNonNegativeInteger(result.score) ||
+          !isSafeNonNegativeInteger(result.largestPrime) ||
+          !isLargestPrime(result.largestPrime) ||
+          result.moves !== moveLog.length ||
           !Number.isSafeInteger(result.rank) ||
           result.rank < 1
         ) {

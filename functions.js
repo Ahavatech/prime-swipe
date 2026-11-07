@@ -33,7 +33,13 @@ document.addEventListener('DOMContentLoaded', () => {
   const cells = []
   const numberFormat = new Intl.NumberFormat()
   let state = GameEngine.createGame()
+  let moveRandom = Math.random
   let moveCount = 0
+  let moveLog = ''
+  let runToken = null
+  let runStarting = false
+  let runUnavailableMessage = ''
+  let gameStartSequence = 0
   let startedAt = Date.now()
   let touchStart = null
   let bestPrime = 0
@@ -41,7 +47,6 @@ document.addEventListener('DOMContentLoaded', () => {
   let pendingSubmission = null
   let submissionInFlight = false
   let submissionConfirmed = false
-  let submissionSequence = 0
 
   function showNotice(message) {
     notice.textContent = message
@@ -179,12 +184,6 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   }
 
-  function runId() {
-    submissionSequence += 1
-    const uuid = globalThis.crypto?.randomUUID?.()
-    return `prime-swipe-${uuid || `${Date.now()}-${submissionSequence}-${Math.random().toString(36).slice(2)}`}`
-  }
-
   function announceMove(direction, outcome) {
     const label = direction[0].toUpperCase() + direction.slice(1)
     if (outcome.merges.length) {
@@ -207,7 +206,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
   function showGameOver() {
     gameSummary()
-    submissionStatus.textContent = ''
+    submissionStatus.textContent = runToken ? '' : runUnavailableMessage
+    submitButton.disabled = !runToken
     nameError.hidden = true
     if (!gameOverDialog.open) {
       gameOverDialog.showModal()
@@ -225,33 +225,75 @@ document.addEventListener('DOMContentLoaded', () => {
     displayName.value = ''
   }
 
-  function newGame() {
-    state = GameEngine.createGame()
+  function newGame({ focus = true } = {}) {
+    const sequence = ++gameStartSequence
+    runStarting = true
+    runToken = null
+    runUnavailableMessage = 'A verified run could not be started. You can still play, but this game cannot be submitted.'
+    moveRandom = Math.random
+    moveLog = ''
+    state = GameEngine.createGame(moveRandom)
     moveCount = 0
     startedAt = Date.now()
     resetSubmission()
-    submissionStatus.textContent = ''
+    submitButton.disabled = true
+    submissionStatus.textContent = 'Starting a verified run…'
     if (gameOverDialog.open) {
       gameOverDialog.close()
     }
     render()
-    statusDisplay.textContent = storageAvailable
-      ? 'New game. Start with one odd tile and one even tile.'
-      : 'New game. Local storage is unavailable, so Best lasts only for this visit.'
-    grid.focus()
+    statusDisplay.textContent = 'Starting a new game…'
+    if (focus) {
+      grid.focus()
+    }
+
+    return LeaderboardAPI.startRun().then(run => {
+      if (sequence !== gameStartSequence) {
+        return
+      }
+      if (run.engineVersion !== GameEngine.VERSION) {
+        const error = new Error('The game rules do not match the server. Refresh the page before starting a new run.')
+        error.code = 'ENGINE_VERSION_MISMATCH'
+        throw error
+      }
+      runToken = run.runToken
+      moveRandom = GameEngine.createSeededRandom(run.seed)
+      state = GameEngine.createGame(moveRandom)
+      runStarting = false
+      runUnavailableMessage = ''
+      submitButton.disabled = false
+      submissionStatus.textContent = ''
+      render()
+      statusDisplay.textContent = storageAvailable
+        ? 'New game. Start with one odd tile and one even tile.'
+        : 'New game. Local storage is unavailable, so Best lasts only for this visit.'
+    }).catch(error => {
+      if (sequence !== gameStartSequence) {
+        return
+      }
+      runStarting = false
+      runToken = null
+      runUnavailableMessage = `${error.message || 'A verified run could not be started.'} You can still play, but this game cannot be submitted.`
+      submitButton.disabled = true
+      submissionStatus.textContent = runUnavailableMessage
+      statusDisplay.textContent = runUnavailableMessage
+    })
   }
 
   function move(direction) {
-    if (state.status !== 'playing' || modalOpen()) {
+    if (state.status !== 'playing' || modalOpen() || runStarting) {
       return
     }
-    const outcome = GameEngine.move(state, direction)
+    const outcome = GameEngine.move(state, direction, moveRandom)
     if (!outcome.moved) {
       statusDisplay.textContent = 'No tiles moved. No new tile spawned.'
       return
     }
     state = outcome.state
     moveCount += 1
+    if (runToken) {
+      moveLog += GameEngine.DIRECTION_CODES[direction]
+    }
     saveBestPrime()
     render(outcome.merges)
     announceMove(direction, outcome)
@@ -352,18 +394,30 @@ document.addEventListener('DOMContentLoaded', () => {
       if (
         result.source !== 'backend' ||
         result.displayName !== pendingSubmission.displayName ||
-        result.score !== pendingSubmission.score ||
-        result.largestPrime !== pendingSubmission.largestPrime
+        result.moves !== pendingSubmission.moveLog.length
       ) {
         throw new Error('The server response did not confirm this run.')
       }
       submissionConfirmed = true
       submitButton.textContent = 'Score confirmed'
-      submissionStatus.textContent = `Score confirmed by the server. Score ${formatNumber(result.score)}, largest prime ${formatNumber(result.largestPrime)}, rank ${result.rank}.`
+      submissionStatus.textContent = `Score confirmed by the server. Score ${formatNumber(result.score)}, largest prime ${formatNumber(result.largestPrime)}, ${formatNumber(result.moves)} moves, rank ${result.rank}.`
     } catch (error) {
-      submissionStatus.textContent = `The leaderboard did not confirm this run (${error.message}). Retry to safely check the same run again; its submission key prevents duplicates.`
-      submitButton.disabled = false
-      submitButton.textContent = 'Retry submission'
+      const terminalRunErrors = new Set([
+        'RUN_TOKEN_REQUIRED',
+        'INVALID_RUN_TOKEN',
+        'RUN_ALREADY_SUBMITTED',
+        'ENGINE_VERSION_MISMATCH',
+        'RUN_EXPIRED',
+        'RUN_REJECTED',
+        'SCORE_MISMATCH',
+        'NOTHING_TO_RANK'
+      ])
+      const cannotRetry = terminalRunErrors.has(error.code)
+      submissionStatus.textContent = cannotRetry
+        ? error.message
+        : `${error.message || 'The leaderboard did not confirm this run.'} You can retry this same run.`
+      submitButton.disabled = cannotRetry
+      submitButton.textContent = cannotRetry ? 'Run cannot be submitted' : 'Retry submission'
     } finally {
       submissionInFlight = false
     }
@@ -372,6 +426,10 @@ document.addEventListener('DOMContentLoaded', () => {
   async function handleSubmit(event) {
     event.preventDefault()
     if (submissionInFlight || submissionConfirmed) {
+      return
+    }
+    if (!runToken) {
+      submissionStatus.textContent = runUnavailableMessage || 'This game does not have a verified run and cannot be submitted.'
       return
     }
     clearNameError()
@@ -388,7 +446,7 @@ document.addEventListener('DOMContentLoaded', () => {
     submissionInFlight = true
     submitButton.disabled = true
     submitButton.textContent = 'Checking rank…'
-    submissionStatus.textContent = 'Checking whether this cumulative Score qualifies. No name or run has been submitted yet.'
+    submissionStatus.textContent = 'Checking whether this score qualifies. No name or run has been submitted yet.'
     try {
       const rank = await LeaderboardAPI.getProjectedRank({ score: state.score })
       if (rank.source !== 'backend') {
@@ -399,12 +457,10 @@ document.addEventListener('DOMContentLoaded', () => {
         return
       }
       pendingSubmission = {
-        submissionId: runId(),
         displayName: normalizedName,
-        score: state.score,
-        largestPrime: state.largestPrime,
-        moves: moveCount,
-        durationSeconds: currentDuration()
+        runToken,
+        moveLog,
+        score: state.score
       }
       displayName.disabled = true
       submissionInFlight = false
@@ -493,8 +549,5 @@ document.addEventListener('DOMContentLoaded', () => {
   grid.addEventListener('pointercancel', clearPointer)
   grid.addEventListener('lostpointercapture', clearPointer)
 
-  render()
-  if (statusDisplay.textContent === '') {
-    statusDisplay.textContent = 'New game. Start with one odd tile and one even tile.'
-  }
+  return newGame({ focus: false })
 })

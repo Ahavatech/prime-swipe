@@ -67,10 +67,11 @@ class FakeElement {
       preventDefault() { this.defaultPrevented = true },
       ...properties
     }
+    let result = event
     for (const listener of this.listeners.get(type) ?? []) {
-      listener(event)
+      result = listener(event) ?? result
     }
-    return event
+    return result
   }
 
   appendChild(child) {
@@ -118,10 +119,23 @@ function cloneState(state) {
 }
 
 function makeApi(overrides = {}) {
-  const calls = { rank: [], submissions: [], leaderboard: 0 }
+  const calls = { runs: [], rank: [], submissions: [], leaderboard: 0 }
   return {
     calls,
     api: {
+      async startRun() {
+        calls.runs.push({})
+        return overrides.startRun
+          ? overrides.startRun()
+          : {
+            runToken: 'signed-run-token',
+            seed: 12345,
+            engineVersion: GameEngine.VERSION,
+            issuedAt: '2026-11-07T10:00:00.000Z',
+            expiresAt: '2026-11-07T16:00:00.000Z',
+            source: 'backend'
+          }
+      },
       async getProjectedRank(payload) {
         calls.rank.push(payload)
         return overrides.rank
@@ -136,7 +150,8 @@ function makeApi(overrides = {}) {
         return {
           displayName: payload.displayName,
           score: payload.score,
-          largestPrime: payload.largestPrime,
+          largestPrime: 101,
+          moves: payload.moveLog.length,
           rank: 1,
           source: 'backend'
         }
@@ -186,28 +201,36 @@ function createApp({ api, initialState, outcome, storageError = null } = {}) {
       stored.set(key, value)
     }
   }
-  let firstGame = true
+  const moveRandoms = []
+  const seededRandoms = []
+  const gameRandoms = []
   const engine = {
     ...GameEngine,
-    createGame() {
-      if (firstGame && initialState) {
-        firstGame = false
+    createSeededRandom(seed) {
+      const random = GameEngine.createSeededRandom(seed)
+      seededRandoms.push(random)
+      return random
+    },
+    createGame(random) {
+      gameRandoms.push(random)
+      if (initialState) {
         return cloneState(initialState)
       }
-      firstGame = false
-      return GameEngine.createGame(() => 0.1)
+      return GameEngine.createGame(random ?? (() => 0.1))
     },
-    move(state, direction) {
-      if (outcome) {
+    move(state, direction, random) {
+      moveRandoms.push(random)
+      const moveOutcome = Array.isArray(outcome) ? outcome.shift() : outcome
+      if (moveOutcome) {
         return {
-          ...outcome,
-          state: cloneState(outcome.state),
-          mergedValues: outcome.mergedValues || [],
-          mergedIndices: outcome.mergedIndices || [],
-          merges: outcome.merges || []
+          ...moveOutcome,
+          state: cloneState(moveOutcome.state),
+          mergedValues: moveOutcome.mergedValues || [],
+          mergedIndices: moveOutcome.mergedIndices || [],
+          merges: moveOutcome.merges || []
         }
       }
-      return GameEngine.move(state, direction, () => 0)
+      return GameEngine.move(state, direction, random ?? (() => 0))
     }
   }
   const script = fs.readFileSync(path.join(__dirname, '..', 'functions.js'), 'utf8')
@@ -221,8 +244,8 @@ function createApp({ api, initialState, outcome, storageError = null } = {}) {
     Intl,
     Math
   })
-  document.dispatch('DOMContentLoaded')
-  return { document, elements, grid: elements.get('grid'), stored }
+  const ready = document.dispatch('DOMContentLoaded')
+  return { document, elements, grid: elements.get('grid'), stored, ready, engine, moveRandoms, seededRandoms, gameRandoms }
 }
 
 function gameWith(values, overrides = {}) {
@@ -246,8 +269,9 @@ async function settle() {
   await new Promise(resolve => setImmediate(resolve))
 }
 
-test('initial UI presents two different-parity tiles and an accessible 4×4 grid', () => {
+test('initial UI presents two different-parity tiles and an accessible 4×4 grid', async () => {
   const app = createApp()
+  await app.ready
   const tiles = app.grid.children.flatMap(row => row.children)
   const occupied = tiles.filter(tile => tile.dataset.value !== '0').map(tile => Number(tile.dataset.value))
 
@@ -260,8 +284,53 @@ test('initial UI presents two different-parity tiles and an accessible 4×4 grid
   assert.match(tiles.find(tile => tile.dataset.value !== '0').attributes['aria-label'], /Row \d, column \d: \d/)
 })
 
-test('keyboard merge updates Score, largest-prime Best, and local persistence', () => {
+test('a failed run request leaves gameplay available and disables score submission', async () => {
+  const finished = gameWith({}, { score: 2, largestPrime: 2, status: 'game-over' })
+  const calls = makeApi({
+    startRun: async () => { throw new Error('Leaderboard service could not be reached.') }
+  })
+  const app = createApp({
+    api: calls.api,
+    initialState: gameWith({ 0: 1, 1: 1 }),
+    outcome: { state: finished, moved: true, scoreDelta: 2, merges: [] }
+  })
+  await app.ready
+
+  app.document.dispatch('keydown', { key: 'ArrowLeft' })
+
+  assert.equal(app.elements.get('score').textContent, '2')
+  assert.equal(app.elements.get('game-over-dialog').open, true)
+  assert.equal(app.elements.get('submit-score').disabled, true)
+  assert.match(app.elements.get('submission-status').textContent, /You can still play/)
+  assert.equal(calls.calls.submissions.length, 0)
+})
+
+test('a server engine-version mismatch starts an unsubmitable local game', async () => {
+  const calls = makeApi({
+    startRun: async () => ({
+      runToken: 'stale-engine-token',
+      seed: 1,
+      engineVersion: 'older',
+      issuedAt: '2026-11-07T10:00:00.000Z',
+      expiresAt: '2026-11-07T16:00:00.000Z'
+    })
+  })
+  const app = createApp({
+    api: calls.api,
+    initialState: gameWith({ 0: 1, 1: 1 }),
+    outcome: { state: gameWith({}, { score: 2, largestPrime: 2 }), moved: true, scoreDelta: 2 }
+  })
+  await app.ready
+
+  assert.equal(app.seededRandoms.length, 0)
+  assert.match(app.elements.get('game-status').textContent, /rules do not match/)
+  app.document.dispatch('keydown', { key: 'ArrowLeft' })
+  assert.equal(app.elements.get('score').textContent, '2')
+})
+
+test('keyboard merge updates Score, largest-prime Best, and local persistence', async () => {
   const app = createApp({ initialState: gameWith({ 0: 1, 1: 1 }) })
+  await app.ready
   app.document.dispatch('keydown', { key: 'ArrowLeft' })
 
   assert.equal(app.elements.get('score').textContent, '2')
@@ -271,8 +340,9 @@ test('keyboard merge updates Score, largest-prime Best, and local persistence', 
   assert.match(app.elements.get('game-status').textContent, /One new tile spawned/)
 })
 
-test('merge feedback marks only the destination when another tile has the same value', () => {
+test('merge feedback marks only the destination when another tile has the same value', async () => {
   const app = createApp({ initialState: gameWith({ 0: 1, 1: 2, 8: 3 }) })
+  await app.ready
   app.document.dispatch('keydown', { key: 'ArrowLeft' })
   const tiles = app.grid.children.flatMap(row => row.children)
 
@@ -282,8 +352,9 @@ test('merge feedback marks only the destination when another tile has the same v
   assert.equal(tiles[8].dataset.prime, undefined)
 })
 
-test('pointer swipe moves the board and merges through the touch input surface', () => {
+test('pointer swipe moves the board and merges through the touch input surface', async () => {
   const app = createApp({ initialState: gameWith({ 0: 1, 1: 2 }) })
+  await app.ready
   app.grid.dispatch('pointerdown', { clientX: 120, clientY: 120, button: 0, pointerId: 1 })
   app.grid.dispatch('pointerup', { clientX: 65, clientY: 120, pointerId: 1 })
 
@@ -291,8 +362,9 @@ test('pointer swipe moves the board and merges through the touch input surface',
   assert.equal(app.elements.get('best-prime').textContent, '3')
 })
 
-test('invalid move does not spawn and local-storage failures are explicit', () => {
+test('invalid move does not spawn and local-storage failures are explicit', async () => {
   const app = createApp({ initialState: gameWith({ 0: 2 }) })
+  await app.ready
   app.document.dispatch('keydown', { key: 'ArrowLeft' })
   assert.equal(app.elements.get('score').textContent, '0')
   assert.equal(app.elements.get('game-status').textContent, 'No tiles moved. No new tile spawned.')
@@ -301,11 +373,13 @@ test('invalid move does not spawn and local-storage failures are explicit', () =
     initialState: gameWith({ 0: 2 }),
     storageError: 'read'
   })
+  await storageFailure.ready
   assert.match(storageFailure.elements.get('game-status').textContent, /Local storage is unavailable/)
 })
 
-test('building exactly 101 marks the goal but leaves the game running', () => {
+test('building exactly 101 marks the goal but leaves the game running', async () => {
   const app = createApp({ initialState: gameWith({ 0: 45, 1: 56 }) })
+  await app.ready
   app.document.dispatch('keydown', { key: 'a' })
 
   assert.equal(app.elements.get('score').textContent, '101')
@@ -315,13 +389,14 @@ test('building exactly 101 marks the goal but leaves the game running', () => {
   assert.match(app.elements.get('game-status').textContent, /45 \+ 56 = 101/)
 })
 
-test('terminal merge announcement preserves its merge, spawn, and game-over status', () => {
+test('terminal merge announcement preserves its merge, spawn, and game-over status', async () => {
   const board = Array(16).fill(25)
   board[0] = 1
   board[1] = 2
   const initialState = gameWith({})
   initialState.board = board
   const app = createApp({ initialState })
+  await app.ready
 
   app.document.dispatch('keydown', { key: 'ArrowLeft' })
 
@@ -333,7 +408,7 @@ test('terminal merge announcement preserves its merge, spawn, and game-over stat
   assert.equal(app.elements.get('game-over-dialog').open, true)
 })
 
-test('game-over dialog presents distinct run summary values and replay works', () => {
+test('game-over dialog presents distinct run summary values and replay works', async () => {
   const finished = gameWith({}, {
     score: 850,
     largestPrime: 101,
@@ -343,6 +418,7 @@ test('game-over dialog presents distinct run summary values and replay works', (
     initialState: gameWith({ 0: 2 }),
     outcome: { state: finished, moved: true, scoreDelta: 0, mergedValues: [] }
   })
+  await app.ready
   app.document.dispatch('keydown', { key: 'ArrowRight' })
 
   assert.equal(app.elements.get('game-over-dialog').open, true)
@@ -351,11 +427,46 @@ test('game-over dialog presents distinct run summary values and replay works', (
   assert.equal(app.elements.get('final-best').textContent, '101')
   assert.match(app.elements.get('game-status').textContent, /One new tile spawned/)
   app.elements.get('play-again').dispatch('click')
+  await settle()
   assert.equal(app.elements.get('game-over-dialog').open, false)
   assert.equal(app.elements.get('score').textContent, '0')
 })
 
-test('opt-in submission sends separate run metrics and confirms only backend response', async () => {
+test('one seeded random source drives game creation and every move', async () => {
+  const app = createApp({ initialState: gameWith({ 0: 1, 1: 1 }) })
+  await app.ready
+
+  app.document.dispatch('keydown', { key: 'ArrowLeft' })
+
+  assert.equal(app.seededRandoms.length, 1)
+  assert.equal(app.gameRandoms.at(-1), app.seededRandoms[0])
+  assert.equal(app.moveRandoms[0], app.seededRandoms[0])
+})
+
+test('only effective moves are added to the submitted move log', async () => {
+  const starting = gameWith({ 0: 2 })
+  const finished = gameWith({}, { score: 10, largestPrime: 5, status: 'game-over' })
+  const calls = makeApi()
+  const app = createApp({
+    api: calls.api,
+    initialState: starting,
+    outcome: [
+      { state: starting, moved: false, scoreDelta: 0 },
+      { state: finished, moved: true, scoreDelta: 0 }
+    ]
+  })
+  await app.ready
+
+  app.document.dispatch('keydown', { key: 'ArrowLeft' })
+  app.document.dispatch('keydown', { key: 'ArrowDown' })
+  app.elements.get('display-name').value = 'ACE'
+  app.elements.get('score-form').dispatch('submit')
+  await settle()
+
+  assert.equal(calls.calls.submissions[0].moveLog, 'D')
+})
+
+test('opt-in submission sends the run proof and confirms server-derived values', async () => {
   const calls = makeApi()
   const finished = gameWith({}, {
     score: 2400,
@@ -367,6 +478,7 @@ test('opt-in submission sends separate run metrics and confirms only backend res
     initialState: gameWith({ 0: 2 }),
     outcome: { state: finished, moved: true, scoreDelta: 0, mergedValues: [] }
   })
+  await app.ready
   app.document.dispatch('keydown', { key: 'ArrowRight' })
   app.elements.get('display-name').value = 'ACE'
   app.elements.get('score-form').dispatch('submit')
@@ -376,9 +488,11 @@ test('opt-in submission sends separate run metrics and confirms only backend res
   assert.equal(calls.calls.rank[0].score, 2400)
   assert.equal(calls.calls.submissions.length, 1)
   assert.equal(calls.calls.submissions[0].score, 2400)
-  assert.equal(calls.calls.submissions[0].largestPrime, 101)
-  assert.equal(calls.calls.submissions[0].submissionId, 'prime-swipe-fixed-run-id')
+  assert.equal(calls.calls.submissions[0].runToken, 'signed-run-token')
+  assert.equal(calls.calls.submissions[0].moveLog, 'R')
+  assert.deepEqual(Object.keys(calls.calls.submissions[0]).sort(), ['displayName', 'moveLog', 'runToken', 'score'])
   assert.match(app.elements.get('submission-status').textContent, /Score confirmed by the server/)
+  assert.match(app.elements.get('submission-status').textContent, /1 moves, rank 1/)
 })
 
 test('a non-qualifying rank preview never submits a run', async () => {
@@ -396,6 +510,7 @@ test('a non-qualifying rank preview never submits a run', async () => {
     initialState: gameWith({ 0: 2 }),
     outcome: { state: finished, moved: true, scoreDelta: 0, mergedValues: [] }
   })
+  await app.ready
   app.document.dispatch('keydown', { key: 'ArrowRight' })
   app.elements.get('display-name').value = 'ACE'
   app.elements.get('score-form').dispatch('submit')
@@ -405,7 +520,7 @@ test('a non-qualifying rank preview never submits a run', async () => {
   assert.match(app.elements.get('submission-status').textContent, /was not submitted/)
 })
 
-test('failed submission is not shown as success and retry uses the same payload key', async () => {
+test('failed submission is not shown as success and retry reuses the same run proof', async () => {
   let attempts = 0
   const calls = makeApi({
     submitScore: async payload => {
@@ -416,7 +531,8 @@ test('failed submission is not shown as success and retry uses the same payload 
       return {
         displayName: payload.displayName,
         score: payload.score,
-        largestPrime: payload.largestPrime,
+        largestPrime: 5,
+        moves: payload.moveLog.length,
         rank: 2,
         source: 'backend'
       }
@@ -432,11 +548,12 @@ test('failed submission is not shown as success and retry uses the same payload 
     initialState: gameWith({ 0: 2 }),
     outcome: { state: finished, moved: true, scoreDelta: 0, mergedValues: [] }
   })
+  await app.ready
   app.document.dispatch('keydown', { key: 'ArrowRight' })
   app.elements.get('display-name').value = 'ACE'
   app.elements.get('score-form').dispatch('submit')
   await settle()
-  assert.match(app.elements.get('submission-status').textContent, /did not confirm/)
+  assert.match(app.elements.get('submission-status').textContent, /network unavailable/)
   assert.equal(app.elements.get('submit-score').textContent, 'Retry submission')
 
   app.elements.get('score-form').dispatch('submit')
@@ -461,6 +578,7 @@ test('leaderboard control fetches entries and keeps values in separate columns',
     })
   })
   const app = createApp({ api: calls.api })
+  await app.ready
   app.elements.get('open-leaderboard').dispatch('click')
   await settle()
 
@@ -473,8 +591,9 @@ test('leaderboard control fetches entries and keeps values in separate columns',
   assert.equal(app.elements.get('leaderboard-dialog').open, false)
 })
 
-test('rules open in a dialog and can be closed', () => {
+test('rules open in a dialog and can be closed', async () => {
   const app = createApp()
+  await app.ready
   app.elements.get('open-rules').dispatch('click')
   assert.equal(app.elements.get('rules-dialog').open, true)
   app.elements.get('close-rules').dispatch('click')
