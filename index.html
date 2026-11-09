@@ -85,11 +85,18 @@
     <div class="dialog-heading">
       <h2 id="leaderboard-title">Leaderboard</h2>
     </div>
-    <p>Ranked by cumulative Score. Largest prime is listed separately.</p>
+    <p>Rank is based on cumulative Score. Choose how to sort the 12 displayed runs; unverified legacy runs are labeled.</p>
     <p id="leaderboard-status" class="section-status" role="status" aria-live="polite">Leaderboard is optional. No run is sent unless you choose to submit it.</p>
+    <div id="leaderboard-sort-control" class="leaderboard-sort-control" hidden>
+      <label for="leaderboard-sort">Sort by</label>
+      <select id="leaderboard-sort" name="sort">
+        <option value="score">Score</option>
+        <option value="largestPrime">Largest prime</option>
+      </select>
+    </div>
     <div id="leaderboard-table-wrap" class="table-wrap" hidden>
       <table>
-        <caption>Prime Swipe runs, ranked by cumulative Score</caption>
+        <caption>Prime Swipe runs; rank is based on cumulative Score</caption>
         <thead>
           <tr>
             <th scope="col">Rank</th>

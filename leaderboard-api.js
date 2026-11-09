@@ -191,7 +191,7 @@
         !Array.isArray(result.entries) ||
         !Number.isSafeInteger(result.limit) ||
         result.limit < 1 ||
-        result.limit > 100 ||
+        result.limit > 12 ||
         result.entries.length > result.limit
       ) {
         throw new LeaderboardApiError('Leaderboard service returned an invalid leaderboard.', 'INVALID_RESPONSE')
@@ -286,8 +286,12 @@
         return { ...result, source: 'backend' }
       },
 
-      async getLeaderboard() {
-        return validateLeaderboard(await request('/api/v1/leaderboard'))
+      async getLeaderboard({ sortBy = 'score' } = {}) {
+        if (!['score', 'largestPrime'].includes(sortBy)) {
+          throw new LeaderboardApiError('Choose a valid leaderboard sort.', 'INVALID_SORT')
+        }
+        const query = new URLSearchParams({ sort: sortBy })
+        return validateLeaderboard(await request(`/api/v1/leaderboard?${query}`))
       }
     }
   }

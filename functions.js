@@ -29,6 +29,8 @@ document.addEventListener('DOMContentLoaded', () => {
   const closeSummaryButton = document.getElementById('close-summary')
   const loadLeaderboardButton = document.getElementById('load-leaderboard')
   const leaderboardStatus = document.getElementById('leaderboard-status')
+  const leaderboardSortControl = document.getElementById('leaderboard-sort-control')
+  const leaderboardSort = document.getElementById('leaderboard-sort')
   const leaderboardTableWrap = document.getElementById('leaderboard-table-wrap')
   const leaderboardEntries = document.getElementById('leaderboard-entries')
   const cells = []
@@ -46,6 +48,7 @@ document.addEventListener('DOMContentLoaded', () => {
   let submissionInFlight = false
   let submissionConfirmed = false
   let persistentNotice = ''
+  let leaderboardLoadSequence = 0
 
   function showNotice(message) {
     notice.textContent = message
@@ -531,20 +534,27 @@ document.addEventListener('DOMContentLoaded', () => {
 
   function showLeaderboardError(error) {
     leaderboardTableWrap.hidden = true
+    leaderboardSortControl.hidden = true
     leaderboardStatus.textContent = `Leaderboard unavailable (${error.message}). You can retry; your game is unaffected.`
   }
 
   async function loadLeaderboard() {
+    const sequence = ++leaderboardLoadSequence
+    const sortBy = leaderboardSort.value || 'score'
     loadLeaderboardButton.disabled = true
     leaderboardTableWrap.hidden = true
     leaderboardStatus.textContent = 'Loading leaderboard entries…'
     try {
-      const result = await LeaderboardAPI.getLeaderboard()
+      const result = await LeaderboardAPI.getLeaderboard({ sortBy })
+      if (sequence !== leaderboardLoadSequence) {
+        return
+      }
       if (result.source !== 'backend') {
-        throw new Error('A verified leaderboard response is unavailable.')
+        throw new Error('A leaderboard response is unavailable.')
       }
       leaderboardEntries.replaceChildren()
       if (result.entries.length === 0) {
+        leaderboardSortControl.hidden = true
         leaderboardStatus.textContent = 'No runs have been submitted yet.'
         return
       }
@@ -555,6 +565,9 @@ document.addEventListener('DOMContentLoaded', () => {
           cell.textContent = value
           row.appendChild(cell)
         }
+        if (entry.largestPrime > 101) {
+          row.children[3].classList.add('largest-prime-record')
+        }
         if (!entry.verified) {
           const label = document.createElement('span')
           label.className = 'unverified-label'
@@ -563,12 +576,17 @@ document.addEventListener('DOMContentLoaded', () => {
         }
         leaderboardEntries.appendChild(row)
       })
+      leaderboardSortControl.hidden = false
       leaderboardTableWrap.hidden = false
-      leaderboardStatus.textContent = `Showing ${result.entries.length} scores ordered by Score.`
+      leaderboardStatus.textContent = `Showing ${result.entries.length} scores sorted by ${sortBy === 'score' ? 'Score' : 'largest prime'}.`
     } catch (error) {
-      showLeaderboardError(error)
+      if (sequence === leaderboardLoadSequence) {
+        showLeaderboardError(error)
+      }
     } finally {
-      loadLeaderboardButton.disabled = false
+      if (sequence === leaderboardLoadSequence) {
+        loadLeaderboardButton.disabled = false
+      }
     }
   }
 
@@ -586,6 +604,7 @@ document.addEventListener('DOMContentLoaded', () => {
   openRulesButton.addEventListener('click', () => rulesDialog.showModal())
   closeRulesButton.addEventListener('click', () => rulesDialog.close())
   openLeaderboardButton.addEventListener('click', openLeaderboard)
+  leaderboardSort.addEventListener('change', loadLeaderboard)
   closeLeaderboardButton.addEventListener('click', () => leaderboardDialog.close())
   gameOverDialog.addEventListener('close', () => {
     if (state.status === 'game-over') {

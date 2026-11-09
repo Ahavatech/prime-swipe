@@ -16,7 +16,8 @@ const ids = [
   'final-largest-prime', 'final-moves', 'final-duration', 'final-best',
   'score-form', 'display-name', 'name-error', 'submit-score',
   'submission-status', 'play-again', 'close-summary', 'load-leaderboard',
-  'leaderboard-status', 'leaderboard-table-wrap', 'leaderboard-entries',
+  'leaderboard-status', 'leaderboard-sort-control', 'leaderboard-sort',
+  'leaderboard-table-wrap', 'leaderboard-entries',
   'restart-after-submit'
 ]
 
@@ -123,7 +124,7 @@ function cloneState(state) {
 }
 
 function makeApi(overrides = {}) {
-  const calls = { runs: [], rank: [], submissions: [], leaderboard: 0 }
+  const calls = { runs: [], rank: [], submissions: [], leaderboard: 0, leaderboardSorts: [] }
   return {
     calls,
     api: {
@@ -160,13 +161,14 @@ function makeApi(overrides = {}) {
           source: 'backend'
         }
       },
-      async getLeaderboard() {
+      async getLeaderboard(options) {
         calls.leaderboard += 1
+        calls.leaderboardSorts.push(options.sortBy)
         return overrides.leaderboard
-          ? overrides.leaderboard()
+          ? overrides.leaderboard(options)
           : {
             entries: [],
-            limit: 100,
+            limit: 12,
             source: 'backend'
           }
       }
@@ -725,12 +727,20 @@ test('temporarily unavailable submissions keep a retry action', async () => {
   assert.match(app.elements.get('submission-status').textContent, /try this same run/)
 })
 
-test('leaderboard control interleaves entries and labels legacy verification status', async () => {
+test('leaderboard defaults to Score and supports sorting while labeling legacy entries', async () => {
   const calls = makeApi({
-    leaderboard: async () => ({
-      entries: [
+    leaderboard: async ({ sortBy }) => {
+      const entries = [
         {
           rank: 1,
+          displayName: 'BIG PRIME',
+          score: 500,
+          largestPrime: 127,
+          submittedAt: '2026-11-06T10:00:00.000Z',
+          verified: true
+        },
+        {
+          rank: 2,
           displayName: 'ACE',
           score: 2400,
           largestPrime: 101,
@@ -738,17 +748,19 @@ test('leaderboard control interleaves entries and labels legacy verification sta
           verified: true
         },
         {
-          rank: 2,
+          rank: 1,
           displayName: 'OLD ACE',
           score: 1200,
           largestPrime: 12,
           submittedAt: '2026-11-04T10:00:00.000Z',
           verified: false
         }
-      ],
-      limit: 100,
-      source: 'backend'
-    })
+      ]
+      entries.sort((a, b) => sortBy === 'score'
+        ? b.score - a.score
+        : b.largestPrime - a.largestPrime || b.score - a.score)
+      return { entries, limit: 12, source: 'backend' }
+    }
   })
   const app = createApp({ api: calls.api })
   await app.ready
@@ -758,11 +770,23 @@ test('leaderboard control interleaves entries and labels legacy verification sta
   assert.equal(app.elements.get('leaderboard-dialog').open, true)
   assert.equal(calls.calls.leaderboard, 1)
   const rows = app.elements.get('leaderboard-entries').children
-  assert.deepEqual(rows[0].children.map(cell => cell.textContent), ['1', 'ACE', '2,400', '101'])
-  assert.deepEqual(rows[1].children.map(cell => cell.textContent), ['2', 'OLD ACE', '1,200', '12'])
+  assert.deepEqual(rows[0].children.map(cell => cell.textContent), ['2', 'ACE', '2,400', '101'])
+  assert.deepEqual(rows[1].children.map(cell => cell.textContent), ['1', 'OLD ACE', '1,200', '12'])
+  assert.deepEqual(rows[2].children.map(cell => cell.textContent), ['1', 'BIG PRIME', '500', '127'])
   assert.equal(rows[1].children[1].children[0].textContent, 'unverified')
-  assert.equal(rows[0].children[1].children.length, 0)
+  assert.equal(rows[0].children[3].className.split(/\s+/).includes('largest-prime-record'), false)
+  assert.equal(rows[2].children[3].className.split(/\s+/).includes('largest-prime-record'), true)
+  assert.equal(calls.calls.leaderboardSorts[0], 'score')
+  assert.equal(app.elements.get('leaderboard-sort-control').hidden, false)
   assert.equal(app.elements.get('leaderboard-table-wrap').hidden, false)
+  app.elements.get('leaderboard-sort').value = 'largestPrime'
+  app.elements.get('leaderboard-sort').dispatch('change')
+  await settle()
+  assert.equal(calls.calls.leaderboardSorts[1], 'largestPrime')
+  assert.deepEqual(
+    app.elements.get('leaderboard-entries').children.map(row => row.children[1].textContent),
+    ['BIG PRIME', 'ACE', 'OLD ACE']
+  )
   app.elements.get('close-leaderboard').dispatch('click')
   assert.equal(app.elements.get('leaderboard-dialog').open, false)
 })

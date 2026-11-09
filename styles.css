@@ -73,7 +73,8 @@ body {
 }
 
 button,
-input {
+input,
+select {
   font: inherit;
 }
 
@@ -104,6 +105,7 @@ button:disabled {
 button:focus-visible,
 a:focus-visible,
 input:focus-visible,
+select:focus-visible,
 summary:focus-visible,
 .grid:focus-visible {
   outline: 3px solid var(--focus);
@@ -399,6 +401,27 @@ summary:focus-visible,
   font-size: 13px;
 }
 
+.leaderboard-sort-control {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  margin: 0 0 9px;
+  color: var(--ink-soft);
+  font-size: 13px;
+  font-weight: 650;
+}
+
+.leaderboard-sort-control select {
+  min-height: 40px;
+  padding: 6px 32px 6px 10px;
+  border: 1px solid #8ca0bc;
+  border-radius: 7px;
+  background: var(--paper);
+  color: var(--navy);
+  font: inherit;
+}
+
 .table-wrap {
   overflow-x: auto;
   border: 1px solid #b8c8dd;
@@ -446,6 +469,11 @@ th:nth-child(n + 3) {
   font-weight: 600;
   letter-spacing: 0.02em;
   text-transform: uppercase;
+}
+
+.largest-prime-record {
+  color: #806000;
+  font-weight: 750;
 }
 
 .game-dialog {

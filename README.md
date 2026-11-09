@@ -82,13 +82,16 @@ npm test --prefix backend
 
 The browser starts a server-issued seeded run, then sends its move log only
 after the player enters a name and submits it. The API replays the run and
-ranks its verified Score; Largest prime is returned separately. Retrying the
-same name, run token, move log, and score returns the original result.
+ranks its verified Score. The leaderboard displays up to 12 runs ordered by
+Score by default, with a sort control for Largest prime. Both orders include
+labeled legacy unverified entries; only verified scores count toward
+qualification and rank previews. Retrying the same name, run token, move log,
+and score returns the original result.
 
 - `POST /api/v1/runs` issues the seed and run token for a ranked game.
 - `POST /api/v1/scores` submits `{ displayName, runToken, moveLog, score }`.
 - `GET /api/v1/leaderboard/rank?score=<integer>` previews rank by Score.
-- `GET /api/v1/leaderboard` returns the public rankings.
+- `GET /api/v1/leaderboard?sort=score|largestPrime` returns up to 12 public entries.
 - `GET /api/v1/health` checks the API and database.
 - `/openapi.json` and `/api-docs/` provide the API specification and UI.
 

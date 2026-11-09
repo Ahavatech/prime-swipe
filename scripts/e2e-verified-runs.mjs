@@ -114,6 +114,20 @@ try {
   const retried = await api.submitScore(payload)
   assert.deepEqual(retried, submitted)
 
+  const leaderboard = await api.getLeaderboard()
+  assert.equal(leaderboard.limit, 12)
+  const listedRun = leaderboard.entries.find(entry => entry.displayName === payload.displayName)
+  assert.ok(listedRun)
+  assert.equal(listedRun.verified, true)
+  assert.equal(listedRun.score, submitted.score)
+
+  const primeLeaderboard = await api.getLeaderboard({ sortBy: 'largestPrime' })
+  assert.ok(primeLeaderboard.entries.length <= 12)
+  assert.deepEqual(
+    primeLeaderboard.entries.map(entry => entry.largestPrime),
+    [...primeLeaderboard.entries.map(entry => entry.largestPrime)].sort((a, b) => b - a)
+  )
+
   const tamperClaims = await api.startRun()
   const tamperSession = playToGameOver(tamperClaims)
   const tamperSnapshot = tamperSession.snapshot()

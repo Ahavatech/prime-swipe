@@ -143,22 +143,27 @@ test('run submission errors have plain recovery messages', async () => {
 })
 
 test('leaderboard validates separate score, largestPrime and verification fields', async () => {
+  let requestUrl
   const api = createLeaderboardApi({
     baseUrl: 'https://api.example.test',
-    fetch: async () => jsonResponse({
-      entries: [{
-        rank: 1,
-        displayName: 'ACE',
-        score: 2000,
-        largestPrime: 101,
-        submittedAt: '2026-11-05T10:00:00.000Z',
-        verified: true
-      }],
-      limit: 100
-    })
+    fetch: async url => {
+      requestUrl = url
+      return jsonResponse({
+        entries: [{
+          rank: 1,
+          displayName: 'ACE',
+          score: 2000,
+          largestPrime: 101,
+          submittedAt: '2026-11-05T10:00:00.000Z',
+          verified: true
+        }],
+        limit: 12
+      })
+    }
   })
 
   const result = await api.getLeaderboard()
+  assert.equal(requestUrl, 'https://api.example.test/api/v1/leaderboard?sort=score')
   assert.equal(result.entries[0].score, 2000)
   assert.equal(result.entries[0].largestPrime, 101)
   assert.equal(result.entries[0].verified, true)
@@ -177,13 +182,28 @@ test('legacy leaderboard entries may contain historical non-prime values', async
         submittedAt: '2026-11-05T10:00:00.000Z',
         verified: false
       }],
-      limit: 100
+      limit: 12
     })
   })
 
   const result = await api.getLeaderboard()
   assert.equal(result.entries[0].verified, false)
   assert.equal(result.entries[0].largestPrime, 12)
+})
+
+test('leaderboard supports largest-prime display sorting', async () => {
+  let requestUrl
+  const api = createLeaderboardApi({
+    baseUrl: 'https://api.example.test',
+    fetch: async url => {
+      requestUrl = url
+      return jsonResponse({ entries: [], limit: 12 })
+    }
+  })
+
+  await api.getLeaderboard({ sortBy: 'largestPrime' })
+  assert.equal(requestUrl, 'https://api.example.test/api/v1/leaderboard?sort=largestPrime')
+  await assert.rejects(api.getLeaderboard({ sortBy: 'other' }), { code: 'INVALID_SORT' })
 })
 
 test('invalid success bodies and unavailable services never become success-shaped results', async () => {
