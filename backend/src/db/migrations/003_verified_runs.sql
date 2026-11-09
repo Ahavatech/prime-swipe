@@ -3,7 +3,8 @@
 -- A row is verified when the server replayed its move log from a server-issued seed and
 -- derived the score itself. Rows written before this migration were whatever the browser
 -- claimed, so they cannot be verified: they keep verified = 0, stay in the table, and are
--- left off the public leaderboard and out of every rank calculation.
+-- excluded from verified-rank qualification. The public leaderboard may display them, labeled
+-- unverified, without including them in projected or newly-issued ranks.
 --
 -- For verified rows, idempotency_key holds 'run:<run id>', so one run can be submitted once.
 -- The column predates this migration and is NOT NULL UNIQUE, which is exactly the constraint

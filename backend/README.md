@@ -21,8 +21,8 @@ directory unless absolute. Migrations run transactionally at startup or with
 `npm run migrate`. Version one is the base schema, version two adds
 `largest_prime`, and version three adds verified runs. Rows saved before
 version three were whatever the browser claimed, so they keep `verified = 0`:
-they stay in the database but are left off the leaderboard and out of every
-rank.
+they stay in the database and can appear on the public leaderboard labeled
+unverified, but they do not count toward rank previews or new verified ranks.
 
 ## Configuration
 
@@ -122,11 +122,15 @@ returns `409 RUN_ALREADY_SUBMITTED`.
 
 ### `GET /api/v1/leaderboard`
 
-Returns `{ "entries": [...], "limit": 100 }`. Only verified runs appear. Entries are ordered by Score
-descending, submission time, and insertion order. Equal Scores share
-competition rank. Public entries contain rank, display name, Score, largest
-prime, and UTC submission time; seeds, move logs and internal IDs are never
-returned.
+Returns `{ "entries": [...], "limit": 12 }`, including verified and legacy
+unverified entries. By default, the 12 highest Scores are returned. Pass
+`?sort=largestPrime` to return the 12 largest primes instead; `?sort=score` is
+the default. Verified ranks remain competition ranks based on cumulative Score
+among verified entries; unverified entries retain their historical stored
+rank and carry `verified: false`. Unverified rows do not affect rank previews
+or new verified ranks. Public entries contain rank, display name, Score,
+largest prime, UTC submission time, and verification status; seeds, move logs
+and internal IDs are never returned.
 
 ### Health and errors
 
@@ -187,8 +191,9 @@ Tests use temporary databases and a controllable clock. They cover the engine's
 replay and a recorded golden run, token forgery and malleability, every
 rejection path of the verifier, single use and retries, expiry, engine drift
 between the browser and server copies, upgrading version-one and version-two
-databases without losing rows, hiding unverified rows from the board and ranks,
-request validation, ranks and ties, persistence, and public response shapes.
+databases without losing rows, listing unverified legacy rows without counting
+them toward verified ranks, largest-prime ordering and the 12-entry cap, request
+validation, ranks and ties, persistence, and public response shapes.
 
 ## Fly.io API and SQLite volume
 

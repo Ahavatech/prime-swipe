@@ -2,9 +2,10 @@ import { HttpError } from '../utils/http-error.js'
 import { verifyRun } from './run-verifier.js'
 
 export const LEADERBOARD_LIMIT = 100
+export const PUBLIC_LEADERBOARD_LIMIT = 12
 
 export function createLeaderboardService({ db, tokens, engine, now = Date.now, logger = console }) {
-  // Only verified rows count anywhere: rank previews, ranks at submission, and the public list.
+  // Only verified rows count in projected or newly-issued ranks.
   const findExisting = db.prepare(`
     SELECT display_name AS displayName,
            score,
@@ -25,15 +26,40 @@ export function createLeaderboardService({ db, tokens, engine, now = Date.now, l
   const countHigherScores = db.prepare('SELECT COUNT(*) AS count FROM scores WHERE verified = 1 AND score > ?')
   const findId = db.prepare('SELECT id FROM scores WHERE idempotency_key = ?')
   const updateRank = db.prepare('UPDATE scores SET submission_rank = ? WHERE id = ?')
-  const listEntries = db.prepare(`
-    SELECT RANK() OVER (ORDER BY score DESC) AS rank,
+  const scoreOrderedEntries = db.prepare(`
+    SELECT CASE
+             WHEN verified = 1 THEN (
+               SELECT COUNT(*) + 1
+               FROM scores AS ranked
+               WHERE ranked.verified = 1 AND ranked.score > scores.score
+             )
+             ELSE submission_rank
+           END AS rank,
            display_name AS displayName,
            score,
            largest_prime AS largestPrime,
-           submitted_at AS submittedAt
+           submitted_at AS submittedAt,
+           verified
     FROM scores
-    WHERE verified = 1
     ORDER BY score DESC, submitted_at ASC, id ASC
+    LIMIT ?
+  `)
+  const primeOrderedEntries = db.prepare(`
+    SELECT CASE
+             WHEN verified = 1 THEN (
+               SELECT COUNT(*) + 1
+               FROM scores AS ranked
+               WHERE ranked.verified = 1 AND ranked.score > scores.score
+             )
+             ELSE submission_rank
+           END AS rank,
+           display_name AS displayName,
+           score,
+           largest_prime AS largestPrime,
+           submitted_at AS submittedAt,
+           verified
+    FROM scores
+    ORDER BY largest_prime DESC, score DESC, submitted_at ASC, id ASC
     LIMIT ?
   `)
 
@@ -159,10 +185,16 @@ export function createLeaderboardService({ db, tokens, engine, now = Date.now, l
       }
     },
 
-    getLeaderboard() {
+    getLeaderboard(sortBy = 'score') {
+      const entriesQuery = sortBy === 'largestPrime'
+        ? primeOrderedEntries
+        : scoreOrderedEntries
       return {
-        entries: listEntries.all(LEADERBOARD_LIMIT),
-        limit: LEADERBOARD_LIMIT
+        entries: entriesQuery.all(PUBLIC_LEADERBOARD_LIMIT).map(entry => ({
+          ...entry,
+          verified: Boolean(entry.verified)
+        })),
+        limit: PUBLIC_LEADERBOARD_LIMIT
       }
     }
   }

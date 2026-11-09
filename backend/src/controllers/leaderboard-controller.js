@@ -20,6 +20,16 @@ function validateScoreQuery(value) {
   return score
 }
 
+function validateLeaderboardSort(value) {
+  if (value === undefined || value === 'score') {
+    return 'score'
+  }
+  if (value === 'largestPrime') {
+    return value
+  }
+  throw new HttpError(400, 'INVALID_SORT', 'sort must be score or largestPrime.')
+}
+
 // The browser sends a run token it got from POST /runs, the moves it played, and the score it
 // saw. The score is a checksum: the server replays the moves and stores its own result.
 function validatePayload(body) {
@@ -101,7 +111,7 @@ export function createLeaderboardController(service) {
     },
 
     getLeaderboard(req, res) {
-      return res.json(service.getLeaderboard())
+      return res.json(service.getLeaderboard(validateLeaderboardSort(req.query.sort)))
     }
   }
 }

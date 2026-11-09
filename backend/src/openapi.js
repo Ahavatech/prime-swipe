@@ -139,8 +139,15 @@ export const openApiSpec = {
     },
     '/api/v1/leaderboard': {
       get: {
-        summary: 'Get the top 100 runs by cumulative Score',
-        description: 'Only verified runs appear. Entries are ordered by score descending, then UTC submission time and insertion order. Equal scores share competition rank. The largest prime is a separate field and never substitutes for Score.',
+        summary: 'Get up to 12 runs ordered by Score or largest prime',
+        description: 'Verified and legacy unverified runs appear. By default, entries are ordered by Score descending; set sort=largestPrime to order by largest prime descending. Ranks remain based on cumulative Score; verified ranks count verified runs only, while unverified entries retain their historical stored rank. Unverified entries are labeled. Rank previews and qualification still include verified runs only.',
+        parameters: [{
+          in: 'query',
+          name: 'sort',
+          required: false,
+          schema: { type: 'string', enum: ['score', 'largestPrime'], default: 'score' },
+          description: 'Display ordering only. Ranks are always based on cumulative Score.'
+        }],
         responses: {
           200: {
             description: 'Public entries without database IDs or idempotency keys.',
@@ -152,20 +159,21 @@ export const openApiSpec = {
                   properties: {
                     entries: {
                       type: 'array',
-                      maxItems: 100,
+                      maxItems: 12,
                       items: {
                         type: 'object',
-                        required: ['rank', 'displayName', 'score', 'largestPrime', 'submittedAt'],
+                        required: ['rank', 'displayName', 'score', 'largestPrime', 'submittedAt', 'verified'],
                         properties: {
                           rank: { type: 'integer', minimum: 1 },
                           displayName: { type: 'string' },
                           score: { type: 'integer', minimum: 0 },
                           largestPrime: { type: 'integer', minimum: 0 },
-                          submittedAt: { type: 'string', format: 'date-time' }
+                          submittedAt: { type: 'string', format: 'date-time' },
+                          verified: { type: 'boolean' }
                         }
                       }
                     },
-                    limit: { type: 'integer', enum: [100] }
+                    limit: { type: 'integer', enum: [12] }
                   }
                 }
               }

@@ -24,6 +24,10 @@ test('health endpoint checks the database and OpenAPI describes the verified con
   assert.equal(specResponse.status, 200)
   assert.equal(spec.info.title, 'Prime Swipe Leaderboard API')
   assert.ok(spec.paths['/api/v1/runs'].post)
+  assert.equal(spec.paths['/api/v1/leaderboard'].get.responses[200]
+    .content['application/json'].schema.properties.entries.maxItems, 12)
+  assert.ok(spec.paths['/api/v1/leaderboard'].get.responses[200]
+    .content['application/json'].schema.properties.entries.items.required.includes('verified'))
   assert.deepEqual(
     spec.paths['/api/v1/scores'].post.requestBody.content['application/json'].schema.required.sort(),
     ['displayName', 'moveLog', 'runToken', 'score']
@@ -188,6 +192,8 @@ test('edited, truncated and extended move logs are caught, and the server agrees
     const rejected = await errorOf(response)
     assert.deepEqual([rejected.status, rejected.code], [422, code], moveLog)
   }
+  const invalidSort = await errorOf(await api.request('/api/v1/leaderboard?sort=other'))
+  assert.deepEqual([invalidSort.status, invalidSort.code], [400, 'INVALID_SORT'])
 })
 
 test('a move log from one run does not work under another run', async t => {
@@ -402,21 +408,40 @@ test('ranks come from verified scores and ties share a rank', async t => {
     assert.equal(result.rank, higherBefore + 1, `run ${index} (score ${result.score})`)
   })
 
-  const board = (await (await api.request('/api/v1/leaderboard')).json()).entries
-  assert.deepEqual(board.map(entry => entry.score), [...board.map(entry => entry.score)].sort((a, b) => b - a))
-  const tie = board.find((entry, index) => index > 0 && entry.score === board[index - 1].score)
+  const scoreOrdered = (await (await api.request('/api/v1/leaderboard')).json()).entries
+  assert.deepEqual(
+    scoreOrdered.map(entry => entry.score),
+    [...scoreOrdered.map(entry => entry.score)].sort((a, b) => b - a)
+  )
+  const board = (await (await api.request('/api/v1/leaderboard?sort=largestPrime')).json()).entries
+  assert.deepEqual(
+    board.map(entry => entry.largestPrime),
+    [...board.map(entry => entry.largestPrime)].sort((a, b) => b - a)
+  )
+  const tie = scoreOrdered.find((entry, index) => index > 0 && entry.score === scoreOrdered[index - 1].score)
   if (tie) {
-    assert.equal(tie.rank, board[board.indexOf(tie) - 1].rank)
+    assert.equal(tie.rank, scoreOrdered[scoreOrdered.indexOf(tie) - 1].rank)
   }
 })
 
-test('legacy rows are kept but stay off the board and out of every rank', async t => {
+test('legacy rows appear in the public list but stay out of projected ranks', async t => {
   const api = await createHarness(t)
   seedLegacyScores(api.db, [{ score: 999_999, largestPrime: 997 }, { score: 500_000 }])
   seedVerifiedScores(api.db, [{ score: 1000, largestPrime: 101 }, { score: 800 }])
 
   const board = await (await api.request('/api/v1/leaderboard')).json()
-  assert.deepEqual(board.entries.map(entry => entry.score), [1000, 800])
+  assert.equal(board.limit, 12)
+  assert.deepEqual(
+    board.entries.map(entry => [entry.displayName, entry.verified]),
+    [['LEGACY0', false], ['LEGACY1', false], ['PLAYER0', true], ['PLAYER1', true]]
+  )
+  assert.equal(board.entries[0].rank, 1, 'legacy rows retain their historical stored rank')
+
+  const primeOrdered = await (await api.request('/api/v1/leaderboard?sort=largestPrime')).json()
+  assert.deepEqual(
+    primeOrdered.entries.map(entry => entry.displayName),
+    ['LEGACY0', 'PLAYER0', 'LEGACY1', 'PLAYER1']
+  )
 
   const preview = await (await api.request('/api/v1/leaderboard/rank?score=900')).json()
   assert.deepEqual(preview, { rank: 2, qualifies: true, leaderboardLimit: 100 })
@@ -432,18 +457,23 @@ test('rank is based on cumulative Score, not largestPrime, and rank 100 is the c
   ])
   assert.deepEqual(await (await api.request('/api/v1/leaderboard/rank?score=800')).json(), { rank: 2, qualifies: true, leaderboardLimit: 100 })
   assert.deepEqual(await (await api.request('/api/v1/leaderboard/rank?score=700')).json(), { rank: 4, qualifies: true, leaderboardLimit: 100 })
+  const orderedByPrime = await (await api.request('/api/v1/leaderboard?sort=largestPrime')).json()
+  assert.deepEqual(orderedByPrime.entries.map(entry => entry.largestPrime), [997, 101, 5])
+  assert.equal(orderedByPrime.entries[0].rank, 2, 'display order does not change Score-based rank')
 
   seedVerifiedScores(api.db, Array.from({ length: 97 }, (_, i) => ({ score: 5000 + i, idempotencyKey: `run:fill-${i}` })))
   // 3 + 97 verified rows above 700 puts it at 101st: past the limit, so no rank is reported.
   assert.deepEqual(await (await api.request('/api/v1/leaderboard/rank?score=700')).json(), { rank: null, qualifies: false, leaderboardLimit: 100 })
-  assert.equal((await (await api.request('/api/v1/leaderboard')).json()).entries.length, 100)
+  const publicBoard = await (await api.request('/api/v1/leaderboard?sort=largestPrime')).json()
+  assert.equal(publicBoard.entries.length, 12)
+  assert.equal(publicBoard.limit, 12)
 })
 
-test('public entries expose no seed, move log, run key or id', async t => {
+test('public entries expose verification status but no seed, move log, run key or id', async t => {
   const api = await createHarness(t)
   await api.playAndSubmit()
   const board = await (await api.request('/api/v1/leaderboard')).json()
-  assert.deepEqual(Object.keys(board.entries[0]).sort(), ['displayName', 'largestPrime', 'rank', 'score', 'submittedAt'])
+  assert.deepEqual(Object.keys(board.entries[0]).sort(), ['displayName', 'largestPrime', 'rank', 'score', 'submittedAt', 'verified'])
   assert.deepEqual(Object.keys(board).sort(), ['entries', 'limit'])
 })
 
