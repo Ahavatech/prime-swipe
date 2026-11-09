@@ -118,8 +118,11 @@ test('initial game has exactly one odd and one even tile in distinct random cell
 
 test('initial spawn distribution matches the specified weights', () => {
   const distribution = GameEngine.getSpawnDistribution(Array(16).fill(0))
-  assert.deepEqual(distribution, { 1: 0.2, 2: 0.25, 3: 0.1, 4: 0.2, 5: 0.1, 6: 0.15 })
-  assert.equal(Object.values(distribution).reduce((sum, weight) => sum + weight, 0), 1)
+  const expected = { 1: 0.28, 2: 0.19, 3: 0.14, 4: 0.15, 5: 0.14, 6: 0.1 }
+  for (const [value, weight] of Object.entries(expected)) {
+    assert.ok(Math.abs(distribution[value] - weight) < 1e-12, `weight for ${value}`)
+  }
+  assert.ok(Math.abs(Object.values(distribution).reduce((sum, weight) => sum + weight, 0) - 1) < 1e-12)
 })
 
 test('unlocks spawn values at the 23 and 53 board thresholds', () => {
@@ -138,16 +141,16 @@ test('unlocks spawn values at the 23 and 53 board thresholds', () => {
   assert.ok(Math.abs(Object.values(unlocked).reduce((sum, weight) => sum + weight, 0) - 1) < 1e-12)
 })
 
-test('parity assist shifts 20 percentage points toward even tiles and preserves group weights', () => {
+test('parity assist shifts 50 percentage points toward even tiles and preserves group weights', () => {
   const board = [1, 3, 5, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
   const distribution = GameEngine.getSpawnDistribution(board)
   const evenProbability = distribution[2] + distribution[4] + distribution[6]
   const oddProbability = distribution[1] + distribution[3] + distribution[5]
 
-  assert.ok(Math.abs(evenProbability - 0.8) < 1e-12)
-  assert.ok(Math.abs(oddProbability - 0.2) < 1e-12)
-  assert.equal(distribution[2] / distribution[4], 25 / 20)
-  assert.equal(distribution[1] / distribution[3], 20 / 10)
+  assert.ok(Math.abs(evenProbability - 0.94) < 1e-12)
+  assert.ok(Math.abs(oddProbability - 0.06) < 1e-12)
+  assert.ok(Math.abs(distribution[2] / distribution[4] - 19 / 15) < 1e-12)
+  assert.ok(Math.abs(distribution[1] / distribution[3] - 28 / 14) < 1e-12)
 
   const capped = GameEngine.getSpawnDistribution(
     board,
@@ -156,7 +159,7 @@ test('parity assist shifts 20 percentage points toward even tiles and preserves 
   const cappedEven = Object.entries(capped)
     .filter(([value]) => Number(value) % 2 === 0)
     .reduce((sum, [, weight]) => sum + weight, 0)
-  assert.ok(Math.abs(cappedEven - 0.88) < 1e-12)
+  assert.ok(Math.abs(cappedEven - 1) < 1e-12)
 })
 
 test('invalid swipes change nothing and do not spawn', () => {
@@ -202,6 +205,15 @@ test('score and largest-prime value accumulate while reaching 101 does not end t
   assert.equal(outcome.state.largestPrime, 101)
   assert.equal(outcome.state.goalAchieved, true)
   assert.equal(outcome.state.status, 'playing')
+})
+
+test('a merge that jumps past 101 still reaches the goal', () => {
+  const state = gameWith({ 0: 97, 1: 6 })
+  const outcome = GameEngine.move(state, 'left', randomSequence(0.99, 0.99))
+
+  assert.equal(outcome.scoreDelta, 103)
+  assert.equal(outcome.state.largestPrime, 103)
+  assert.equal(outcome.state.goalAchieved, true)
 })
 
 test('game over requires a full board with no horizontal or vertical prime sum', () => {

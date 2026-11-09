@@ -1,0 +1,13 @@
+{
+  "name": "prime-swipe-solver",
+  "private": true,
+  "type": "module",
+  "description": "Search-based players and benchmarks for Prime Swipe, used to retune the spawn rules.",
+  "scripts": {
+    "test": "node --test test/*.test.mjs",
+    "tune": "node tune.mjs",
+    "sweep": "node sweep.mjs 1 && node sweep.mjs 2",
+    "finals": "node finals.mjs",
+    "confirm": "node confirm.mjs"
+  }
+}

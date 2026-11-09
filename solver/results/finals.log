@@ -1,0 +1,25 @@
+current/random   win   0.17% [0.07–0.39]  ≥53  19.3%  moves p10/med/p90 41/54/70  largest med/p90 41/59  0.005 ms/move
+current/greedy   win   1.07% [0.76–1.50]  ≥53  49.5%  moves p10/med/p90 48/63/80  largest med/p90 47/83  0.006 ms/move
+current/lookahead win   1.60% [1.21–2.11]  ≥53  50.4%  moves p10/med/p90 49/65/81  largest med/p90 53/83  0.008 ms/move
+current/expectimax-1 win   3.50% [2.53–4.83]  ≥53  55.2%  moves p10/med/p90 55/71/92  largest med/p90 53/83  0.032 ms/move
+current/montecarlo win   9.00% [6.26–12.78]  ≥53  61.7%  moves p10/med/p90 52/67/85  largest med/p90 53/101  15.565 ms/move
+-- current done in 166s
+A-even45-u5/random win   0.97% [0.67–1.38]  ≥53  39.7%  moves p10/med/p90 42/54/71  largest med/p90 47/73  0.006 ms/move  REFEREE DISAGREES x29
+A-even45-u5/greedy win   7.20% [6.33–8.18]  ≥53  72.8%  moves p10/med/p90 47/61/79  largest med/p90 61/101  0.005 ms/move  REFEREE DISAGREES x216
+A-even45-u5/lookahead win   8.60% [7.65–9.66]  ≥53  75.6%  moves p10/med/p90 48/64/82  largest med/p90 67/101  0.007 ms/move  REFEREE DISAGREES x258
+A-even45-u5/expectimax-1 win  30.00% [27.24–32.91]  ≥53  90.8%  moves p10/med/p90 58/78/97  largest med/p90 89/113  0.027 ms/move  REFEREE DISAGREES x300
+A-even45-u5/montecarlo win  43.33% [37.85–48.99]  ≥53  89.0%  moves p10/med/p90 49/65/83  largest med/p90 89/101  16.102 ms/move  REFEREE DISAGREES x130
+-- A-even45-u5 done in 163s
+B-even45-u8/random win   2.30% [1.82–2.90]  ≥53  51.9%  moves p10/med/p90 41/55/73  largest med/p90 53/83  0.007 ms/move  REFEREE DISAGREES x69
+B-even45-u8/greedy win  14.50% [13.29–15.81]  ≥53  79.1%  moves p10/med/p90 45/61/80  largest med/p90 73/109  0.006 ms/move  REFEREE DISAGREES x435
+B-even45-u8/lookahead win  16.83% [15.54–18.21]  ≥53  81.9%  moves p10/med/p90 47/63/83  largest med/p90 79/113  0.008 ms/move  REFEREE DISAGREES x505
+B-even45-u8/expectimax-1 win  46.50% [43.43–49.60]  ≥53  93.8%  moves p10/med/p90 53/75/96  largest med/p90 101/113  0.028 ms/move  REFEREE DISAGREES x465
+B-even45-u8/montecarlo win  59.00% [53.35–64.42]  ≥53  91.3%  moves p10/med/p90 47/64/80  largest med/p90 101/101  16.360 ms/move  REFEREE DISAGREES x177
+-- B-even45-u8 done in 162s
+C-even60-u8/random win   2.33% [1.85–2.94]  ≥53  51.3%  moves p10/med/p90 40/55/73  largest med/p90 53/83  0.007 ms/move  REFEREE DISAGREES x70
+C-even60-u8/greedy win  12.40% [11.27–13.63]  ≥53  79.1%  moves p10/med/p90 44/61/80  largest med/p90 73/109  0.006 ms/move  REFEREE DISAGREES x372
+C-even60-u8/lookahead win  13.83% [12.64–15.12]  ≥53  82.5%  moves p10/med/p90 46/64/84  largest med/p90 79/109  0.009 ms/move  REFEREE DISAGREES x415
+C-even60-u8/expectimax-1 win  43.60% [40.56–46.69]  ≥53  92.9%  moves p10/med/p90 51/74/96  largest med/p90 101/113  0.028 ms/move  REFEREE DISAGREES x436
+C-even60-u8/montecarlo win  51.67% [46.03–57.26]  ≥53  92.7%  moves p10/med/p90 47/65/79  largest med/p90 101/101  17.749 ms/move  REFEREE DISAGREES x155
+-- C-even60-u8 done in 175s
+FINALS DONE

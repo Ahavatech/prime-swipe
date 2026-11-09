@@ -4,7 +4,7 @@ import { verifyRun } from './run-verifier.js'
 export const LEADERBOARD_LIMIT = 100
 
 export function createLeaderboardService({ db, tokens, engine, now = Date.now, logger = console }) {
-  // Only verified rows can be submitted or retried through the run-token API.
+  // Only verified rows count anywhere: rank previews, ranks at submission, and the public list.
   const findExisting = db.prepare(`
     SELECT display_name AS displayName,
            score,
@@ -22,7 +22,7 @@ export function createLeaderboardService({ db, tokens, engine, now = Date.now, l
       verified, seed, engine_version, move_log
     ) VALUES (?, ?, ?, ?, ?, ?, 1, ?, 1, ?, ?, ?)
   `)
-  const countHigherScores = db.prepare('SELECT COUNT(*) AS count FROM scores WHERE score > ?')
+  const countHigherScores = db.prepare('SELECT COUNT(*) AS count FROM scores WHERE verified = 1 AND score > ?')
   const findId = db.prepare('SELECT id FROM scores WHERE idempotency_key = ?')
   const updateRank = db.prepare('UPDATE scores SET submission_rank = ? WHERE id = ?')
   const listEntries = db.prepare(`
@@ -30,9 +30,9 @@ export function createLeaderboardService({ db, tokens, engine, now = Date.now, l
            display_name AS displayName,
            score,
            largest_prime AS largestPrime,
-           submitted_at AS submittedAt,
-           verified
+           submitted_at AS submittedAt
     FROM scores
+    WHERE verified = 1
     ORDER BY score DESC, submitted_at ASC, id ASC
     LIMIT ?
   `)
@@ -48,7 +48,9 @@ export function createLeaderboardService({ db, tokens, engine, now = Date.now, l
   }
 
   // The same run sent again with the same name and move log is a retry and gets its original
-  // answer. Anything else for an already-used run is a conflict.
+  // answer. Anything else for an already-used run is a conflict. The score claim is still a
+  // checksum on a retry: one that disagrees with the stored replay is refused exactly as it
+  // would have been the first time, instead of being waved through because the run exists.
   function resolveExisting(existing, payload) {
     if (existing.displayName === payload.displayName && existing.moveLog === payload.moveLog) {
       if (existing.score !== payload.score) {
@@ -159,10 +161,7 @@ export function createLeaderboardService({ db, tokens, engine, now = Date.now, l
 
     getLeaderboard() {
       return {
-        entries: listEntries.all(LEADERBOARD_LIMIT).map(entry => ({
-          ...entry,
-          verified: entry.verified === 1
-        })),
+        entries: listEntries.all(LEADERBOARD_LIMIT),
         limit: LEADERBOARD_LIMIT
       }
     }

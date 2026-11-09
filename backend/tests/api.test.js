@@ -388,7 +388,7 @@ test('two simultaneous submissions of one run store exactly one row', async t =>
   assert.equal(api.count(), 2)
 })
 
-test('scores from verified runs are ranked together and ties share a rank', async t => {
+test('ranks come from verified scores and ties share a rank', async t => {
   const api = await createHarness(t, { seeds: [1, 2, 3, 4] })
   const results = []
   for (let i = 0; i < 4; i += 1) {
@@ -410,18 +410,16 @@ test('scores from verified runs are ranked together and ties share a rank', asyn
   }
 })
 
-test('legacy rows appear in score order and are clearly marked unverified', async t => {
+test('legacy rows are kept but stay off the board and out of every rank', async t => {
   const api = await createHarness(t)
   seedLegacyScores(api.db, [{ score: 999_999, largestPrime: 997 }, { score: 500_000 }])
   seedVerifiedScores(api.db, [{ score: 1000, largestPrime: 101 }, { score: 800 }])
 
   const board = await (await api.request('/api/v1/leaderboard')).json()
-  assert.deepEqual(board.entries.map(entry => entry.score), [999_999, 500_000, 1000, 800])
-  assert.deepEqual(board.entries.map(entry => entry.verified), [false, false, true, true])
-  assert.deepEqual(board.entries.map(entry => entry.rank), [1, 2, 3, 4])
+  assert.deepEqual(board.entries.map(entry => entry.score), [1000, 800])
 
   const preview = await (await api.request('/api/v1/leaderboard/rank?score=900')).json()
-  assert.deepEqual(preview, { rank: 4, qualifies: true, leaderboardLimit: 100 })
+  assert.deepEqual(preview, { rank: 2, qualifies: true, leaderboardLimit: 100 })
   assert.equal(api.db.prepare('SELECT COUNT(*) AS c FROM scores WHERE verified = 0').get().c, 2)
 })
 
@@ -436,7 +434,7 @@ test('rank is based on cumulative Score, not largestPrime, and rank 100 is the c
   assert.deepEqual(await (await api.request('/api/v1/leaderboard/rank?score=700')).json(), { rank: 4, qualifies: true, leaderboardLimit: 100 })
 
   seedVerifiedScores(api.db, Array.from({ length: 97 }, (_, i) => ({ score: 5000 + i, idempotencyKey: `run:fill-${i}` })))
-  // 3 + 97 scores above 700 puts it at 101st: past the limit, so no rank is reported.
+  // 3 + 97 verified rows above 700 puts it at 101st: past the limit, so no rank is reported.
   assert.deepEqual(await (await api.request('/api/v1/leaderboard/rank?score=700')).json(), { rank: null, qualifies: false, leaderboardLimit: 100 })
   assert.equal((await (await api.request('/api/v1/leaderboard')).json()).entries.length, 100)
 })
@@ -445,8 +443,7 @@ test('public entries expose no seed, move log, run key or id', async t => {
   const api = await createHarness(t)
   await api.playAndSubmit()
   const board = await (await api.request('/api/v1/leaderboard')).json()
-  assert.deepEqual(Object.keys(board.entries[0]).sort(), ['displayName', 'largestPrime', 'rank', 'score', 'submittedAt', 'verified'])
-  assert.equal(board.entries[0].verified, true)
+  assert.deepEqual(Object.keys(board.entries[0]).sort(), ['displayName', 'largestPrime', 'rank', 'score', 'submittedAt'])
   assert.deepEqual(Object.keys(board).sort(), ['entries', 'limit'])
 })
 

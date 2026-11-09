@@ -24,6 +24,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const nameError = document.getElementById('name-error')
   const submitButton = document.getElementById('submit-score')
   const submissionStatus = document.getElementById('submission-status')
+  const restartAfterSubmitButton = document.getElementById('restart-after-submit')
   const playAgainButton = document.getElementById('play-again')
   const closeSummaryButton = document.getElementById('close-summary')
   const loadLeaderboardButton = document.getElementById('load-leaderboard')
@@ -33,12 +34,9 @@ document.addEventListener('DOMContentLoaded', () => {
   const cells = []
   const numberFormat = new Intl.NumberFormat()
   let state = GameEngine.createGame()
-  let moveRandom = Math.random
+  let session = null
   let moveCount = 0
-  let moveLog = ''
-  let runToken = null
   let runStarting = false
-  let runUnavailableMessage = ''
   let gameStartSequence = 0
   let startedAt = Date.now()
   let touchStart = null
@@ -47,6 +45,7 @@ document.addEventListener('DOMContentLoaded', () => {
   let pendingSubmission = null
   let submissionInFlight = false
   let submissionConfirmed = false
+  let persistentNotice = ''
 
   function showNotice(message) {
     notice.textContent = message
@@ -64,7 +63,8 @@ document.addEventListener('DOMContentLoaded', () => {
   } catch {
     storageAvailable = false
     statusDisplay.textContent = 'Local storage is unavailable. Your Best will last only for this visit.'
-    showNotice('Local storage is unavailable, so your best prime will last only for this visit.')
+    persistentNotice = 'Local storage is unavailable, so your best prime will last only for this visit.'
+    showNotice(persistentNotice)
   }
 
   for (let rowIndex = 0; rowIndex < 4; rowIndex += 1) {
@@ -206,8 +206,12 @@ document.addEventListener('DOMContentLoaded', () => {
 
   function showGameOver() {
     gameSummary()
-    submissionStatus.textContent = runToken ? '' : runUnavailableMessage
-    submitButton.disabled = !runToken
+    const ranked = Boolean(session?.ranked)
+    submissionStatus.textContent = ranked ? '' : 'Practice game, scores cannot be submitted.'
+    scoreForm.hidden = !ranked
+    submitButton.hidden = false
+    submitButton.disabled = !ranked
+    restartAfterSubmitButton.hidden = true
     nameError.hidden = true
     if (!gameOverDialog.open) {
       gameOverDialog.showModal()
@@ -223,26 +227,27 @@ document.addEventListener('DOMContentLoaded', () => {
     submitButton.textContent = 'Check rank & submit'
     displayName.disabled = false
     displayName.value = ''
+    submitButton.hidden = false
+    restartAfterSubmitButton.hidden = true
+    scoreForm.hidden = false
   }
 
   function newGame({ focus = true } = {}) {
     const sequence = ++gameStartSequence
     runStarting = true
-    runToken = null
-    runUnavailableMessage = 'A verified run could not be started. You can still play, but this game cannot be submitted.'
-    moveRandom = Math.random
-    moveLog = ''
-    state = GameEngine.createGame(moveRandom)
+    session = null
+    state = GameEngine.createGame()
     moveCount = 0
     startedAt = Date.now()
     resetSubmission()
     submitButton.disabled = true
-    submissionStatus.textContent = 'Starting a verified run…'
+    submissionStatus.textContent = 'Starting ranked run…'
+    showNotice('Starting ranked run…')
     if (gameOverDialog.open) {
       gameOverDialog.close()
     }
     render()
-    statusDisplay.textContent = 'Starting a new game…'
+    statusDisplay.textContent = 'Starting ranked run…'
     if (focus) {
       grid.focus()
     }
@@ -256,14 +261,18 @@ document.addEventListener('DOMContentLoaded', () => {
         error.code = 'ENGINE_VERSION_MISMATCH'
         throw error
       }
-      runToken = run.runToken
-      moveRandom = GameEngine.createSeededRandom(run.seed)
-      state = GameEngine.createGame(moveRandom)
+      session = RunSession.createRunSession({ engine: GameEngine, claims: run })
+      state = session.snapshot().state
       runStarting = false
-      runUnavailableMessage = ''
       submitButton.disabled = false
       submissionStatus.textContent = ''
       render()
+      if (persistentNotice) {
+        notice.textContent = persistentNotice
+        notice.hidden = false
+      } else {
+        notice.hidden = true
+      }
       statusDisplay.textContent = storageAvailable
         ? 'New game. Start with one odd tile and one even tile.'
         : 'New game. Local storage is unavailable, so Best lasts only for this visit.'
@@ -272,28 +281,28 @@ document.addEventListener('DOMContentLoaded', () => {
         return
       }
       runStarting = false
-      runToken = null
-      runUnavailableMessage = `${error.message || 'A verified run could not be started.'} You can still play, but this game cannot be submitted.`
+      session = RunSession.createRunSession({ engine: GameEngine, claims: null })
+      state = session.snapshot().state
       submitButton.disabled = true
-      submissionStatus.textContent = runUnavailableMessage
-      statusDisplay.textContent = runUnavailableMessage
+      scoreForm.hidden = true
+      submissionStatus.textContent = 'Practice game, scores cannot be submitted.'
+      showNotice('Practice game, scores cannot be submitted.')
+      render()
+      statusDisplay.textContent = 'Practice game, scores cannot be submitted.'
     })
   }
 
   function move(direction) {
-    if (state.status !== 'playing' || modalOpen() || runStarting) {
+    if (!session || state.status !== 'playing' || modalOpen() || runStarting) {
       return
     }
-    const outcome = GameEngine.move(state, direction, moveRandom)
+    const outcome = session.move(direction)
     if (!outcome.moved) {
       statusDisplay.textContent = 'No tiles moved. No new tile spawned.'
       return
     }
     state = outcome.state
     moveCount += 1
-    if (runToken) {
-      moveLog += GameEngine.DIRECTION_CODES[direction]
-    }
     saveBestPrime()
     render(outcome.merges)
     announceMove(direction, outcome)
@@ -381,20 +390,42 @@ document.addEventListener('DOMContentLoaded', () => {
     displayName.removeAttribute('aria-invalid')
   }
 
+  function showTerminalSubmissionError(error) {
+    submissionStatus.textContent = error.message
+    scoreForm.hidden = true
+    submitButton.hidden = true
+    restartAfterSubmitButton.hidden = false
+  }
+
+  function showExpiredRun() {
+    showTerminalSubmissionError({
+      message: 'This run has expired. Start a new game before submitting.'
+    })
+  }
+
   async function sendPendingSubmission() {
     if (!pendingSubmission || submissionInFlight || submissionConfirmed) {
       return
     }
+    if (session?.isExpired(Date.now())) {
+      showExpiredRun()
+      return
+    }
+    const sequence = gameStartSequence
+    const payload = pendingSubmission
     submissionInFlight = true
     submitButton.disabled = true
     submitButton.textContent = 'Waiting for confirmation…'
     submissionStatus.textContent = 'Sending your run. It is not recorded until the API confirms it.'
     try {
-      const result = await LeaderboardAPI.submitScore(pendingSubmission)
+      const result = await LeaderboardAPI.submitScore(payload)
+      if (sequence !== gameStartSequence) {
+        return
+      }
       if (
         result.source !== 'backend' ||
-        result.displayName !== pendingSubmission.displayName ||
-        result.moves !== pendingSubmission.moveLog.length
+        result.displayName !== payload.displayName ||
+        result.moves !== payload.moveLog.length
       ) {
         throw new Error('The server response did not confirm this run.')
       }
@@ -402,8 +433,10 @@ document.addEventListener('DOMContentLoaded', () => {
       submitButton.textContent = 'Score confirmed'
       submissionStatus.textContent = `Score confirmed by the server. Score ${formatNumber(result.score)}, largest prime ${formatNumber(result.largestPrime)}, ${formatNumber(result.moves)} moves, rank ${result.rank}.`
     } catch (error) {
+      if (sequence !== gameStartSequence) {
+        return
+      }
       const terminalRunErrors = new Set([
-        'RUN_TOKEN_REQUIRED',
         'INVALID_RUN_TOKEN',
         'RUN_ALREADY_SUBMITTED',
         'ENGINE_VERSION_MISMATCH',
@@ -413,13 +446,17 @@ document.addEventListener('DOMContentLoaded', () => {
         'NOTHING_TO_RANK'
       ])
       const cannotRetry = terminalRunErrors.has(error.code)
-      submissionStatus.textContent = cannotRetry
-        ? error.message
-        : `${error.message || 'The leaderboard did not confirm this run.'} You can retry this same run.`
-      submitButton.disabled = cannotRetry
-      submitButton.textContent = cannotRetry ? 'Run cannot be submitted' : 'Retry submission'
+      if (cannotRetry) {
+        showTerminalSubmissionError(error)
+      } else {
+        submissionStatus.textContent = `${error.message || 'The leaderboard did not confirm this run.'} You can retry this same run.`
+        submitButton.disabled = false
+        submitButton.textContent = 'Retry submission'
+      }
     } finally {
-      submissionInFlight = false
+      if (sequence === gameStartSequence) {
+        submissionInFlight = false
+      }
     }
   }
 
@@ -428,8 +465,12 @@ document.addEventListener('DOMContentLoaded', () => {
     if (submissionInFlight || submissionConfirmed) {
       return
     }
-    if (!runToken) {
-      submissionStatus.textContent = runUnavailableMessage || 'This game does not have a verified run and cannot be submitted.'
+    if (!session?.ranked) {
+      submissionStatus.textContent = 'Practice game, scores cannot be submitted.'
+      return
+    }
+    if (session.isExpired(Date.now())) {
+      showExpiredRun()
       return
     }
     clearNameError()
@@ -437,6 +478,9 @@ document.addEventListener('DOMContentLoaded', () => {
       await sendPendingSubmission()
       return
     }
+    const sequence = gameStartSequence
+    const submissionSession = session
+    const snapshot = submissionSession.snapshot()
     const normalizedName = displayName.value.normalize('NFC').trim()
     if (!/^[A-Za-z0-9 _-]{1,12}$/.test(normalizedName)) {
       setNameError('Enter 1–12 letters, numbers, spaces, hyphens, or underscores.')
@@ -448,9 +492,12 @@ document.addEventListener('DOMContentLoaded', () => {
     submitButton.textContent = 'Checking rank…'
     submissionStatus.textContent = 'Checking whether this score qualifies. No name or run has been submitted yet.'
     try {
-      const rank = await LeaderboardAPI.getProjectedRank({ score: state.score })
+      const rank = await LeaderboardAPI.getProjectedRank({ score: snapshot.state.score })
+      if (sequence !== gameStartSequence || session !== submissionSession) {
+        return
+      }
       if (rank.source !== 'backend') {
-        throw new LeaderboardAPI.LeaderboardApiError('A verified backend rank is unavailable.', 'INVALID_RESPONSE')
+        throw new Error('A verified backend rank is unavailable.')
       }
       if (!rank.qualifies) {
         submissionStatus.textContent = `This Score does not currently qualify for the public top ${rank.leaderboardLimit}; the run was not submitted.`
@@ -458,17 +505,21 @@ document.addEventListener('DOMContentLoaded', () => {
       }
       pendingSubmission = {
         displayName: normalizedName,
-        runToken,
-        moveLog,
-        score: state.score
+        runToken: snapshot.runToken,
+        moveLog: snapshot.moveLog,
+        score: snapshot.state.score
       }
+      Object.freeze(pendingSubmission)
       displayName.disabled = true
       submissionInFlight = false
       await sendPendingSubmission()
     } catch (error) {
+      if (sequence !== gameStartSequence) {
+        return
+      }
       submissionStatus.textContent = `Rank could not be verified (${error.message}). Nothing was confirmed or submitted. Check the connection and try again.`
     } finally {
-      if (!pendingSubmission || submissionConfirmed) {
+      if (sequence === gameStartSequence && (!pendingSubmission || submissionConfirmed)) {
         submissionInFlight = false
         submitButton.disabled = submissionConfirmed
         if (!submissionConfirmed) {
@@ -499,21 +550,21 @@ document.addEventListener('DOMContentLoaded', () => {
       }
       result.entries.forEach(entry => {
         const row = document.createElement('tr')
-        for (const value of [
-          formatNumber(entry.rank),
-          entry.displayName,
-          formatNumber(entry.score),
-          formatNumber(entry.largestPrime),
-          entry.verified ? 'Verified' : 'Legacy (unverified)'
-        ]) {
+        for (const value of [formatNumber(entry.rank), entry.displayName, formatNumber(entry.score), formatNumber(entry.largestPrime)]) {
           const cell = document.createElement('td')
           cell.textContent = value
           row.appendChild(cell)
         }
+        if (!entry.verified) {
+          const label = document.createElement('span')
+          label.className = 'unverified-label'
+          label.textContent = 'unverified'
+          row.children[1].appendChild(label)
+        }
         leaderboardEntries.appendChild(row)
       })
       leaderboardTableWrap.hidden = false
-      leaderboardStatus.textContent = `Showing ${result.entries.length} scores ordered by Score. Legacy entries are labeled because they were not replay-verified.`
+      leaderboardStatus.textContent = `Showing ${result.entries.length} scores ordered by Score.`
     } catch (error) {
       showLeaderboardError(error)
     } finally {
@@ -530,6 +581,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
   newGameButton.addEventListener('click', newGame)
   playAgainButton.addEventListener('click', newGame)
+  restartAfterSubmitButton.addEventListener('click', newGame)
   closeSummaryButton.addEventListener('click', () => gameOverDialog.close())
   openRulesButton.addEventListener('click', () => rulesDialog.showModal())
   closeRulesButton.addEventListener('click', () => rulesDialog.close())

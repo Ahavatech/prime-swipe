@@ -21,9 +21,8 @@ directory unless absolute. Migrations run transactionally at startup or with
 `npm run migrate`. Version one is the base schema, version two adds
 `largest_prime`, and version three adds verified runs. Rows saved before
 version three were whatever the browser claimed, so they keep `verified = 0`:
-they stay in the database and appear on the leaderboard in score order, clearly
-labeled as legacy and unverified. Their scores also count toward rank; they are
-never upgraded to verified.
+they stay in the database but are left off the leaderboard and out of every
+rank.
 
 ## Configuration
 
@@ -50,10 +49,10 @@ application, volume, and database name distinct from 2048.
 ### `GET /api/v1/leaderboard/rank?score=<integer>`
 
 Returns `{ "rank": 7, "qualifies": true, "leaderboardLimit": 100 }`. Rank is
-one plus the number of verified or historical legacy cumulative Scores
-strictly greater than the candidate; equal Scores share a rank, and rank 100
-qualifies. Outside the limit, `rank` is `null` and `qualifies` is `false`. A
-preview does not save or verify a run, so treat it as advice.
+one plus the number of verified cumulative Scores strictly greater than the
+candidate; equal Scores share a rank, and rank 100 qualifies. Outside the
+limit, `rank` is `null` and `qualifies` is `false`. A preview does not save or
+verify a run, so treat it as advice.
 
 ### `POST /api/v1/runs`
 
@@ -63,7 +62,7 @@ Starts a run. No body. Returns `201`:
 {
   "runToken": "ps1.eyJy...",
   "seed": 3141592653,
-  "engineVersion": "1",
+  "engineVersion": "2",
   "issuedAt": "2026-11-07T12:00:00.000Z",
   "expiresAt": "2026-11-07T18:00:00.000Z"
 }
@@ -102,9 +101,11 @@ letters, numbers, spaces, hyphens, or underscores. The backend ranks by
 statistic.
 
 A new run returns `201` with display name, Score, largest prime, moves and
-rank. A run can be submitted once. Sending it again with the same name and move
-log returns the original response with `200`, even after the token has expired.
-Anything else for a used run returns `409 RUN_ALREADY_SUBMITTED`.
+rank. A run can be submitted once. Sending it again with the same name, move log and
+score returns the original response with `200`, even after the token has
+expired. The same name and move log with a different `score` is
+`422 SCORE_MISMATCH`, as on the first attempt. Any other change to a used run
+returns `409 RUN_ALREADY_SUBMITTED`.
 
 | Status | Code | Meaning |
 |---|---|---|
@@ -121,13 +122,11 @@ Anything else for a used run returns `409 RUN_ALREADY_SUBMITTED`.
 
 ### `GET /api/v1/leaderboard`
 
-Returns `{ "entries": [...], "limit": 100 }`. Verified runs and historical
-legacy scores are interleaved by Score descending, submission time, and
-insertion order. Equal Scores share competition rank across both groups.
-Public entries contain rank, display name, Score, largest prime, UTC submission
-time, and a `verified` boolean. `false` identifies a legacy score that predates
-replay verification; its original values are shown without claiming they were
-verified. Seeds, move logs and internal IDs are never returned.
+Returns `{ "entries": [...], "limit": 100 }`. Only verified runs appear. Entries are ordered by Score
+descending, submission time, and insertion order. Equal Scores share
+competition rank. Public entries contain rank, display name, Score, largest
+prime, and UTC submission time; seeds, move logs and internal IDs are never
+returned.
 
 ### Health and errors
 
@@ -188,8 +187,7 @@ Tests use temporary databases and a controllable clock. They cover the engine's
 replay and a recorded golden run, token forgery and malleability, every
 rejection path of the verifier, single use and retries, expiry, engine drift
 between the browser and server copies, upgrading version-one and version-two
-databases without losing rows, interleaving legacy rows and verified runs in
-the board and ranks,
+databases without losing rows, hiding unverified rows from the board and ranks,
 request validation, ranks and ties, persistence, and public response shapes.
 
 ## Fly.io API and SQLite volume

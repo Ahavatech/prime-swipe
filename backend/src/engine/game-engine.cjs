@@ -10,7 +10,13 @@
   const SIZE = 4
   const CELL_COUNT = SIZE * SIZE
   const DIRECTIONS = new Set(['up', 'down', 'left', 'right'])
-  const BASE_SPAWN_WEIGHTS = Object.freeze({ 1: 20, 2: 25, 3: 10, 4: 20, 5: 10, 6: 15 })
+  // Retuned in engine version 2 from solver benchmarks (solver/README.md). Under the v1 weights
+  // (1:20 2:25 3:10 4:20 5:10 6:15, assist +0.2) a strong solver reached 101 in about 9% of
+  // games and the simple bots in about 1%: the evens that pile up killed games at ~60 moves.
+  const BASE_SPAWN_WEIGHTS = Object.freeze({ 1: 28, 2: 19, 3: 14, 4: 15, 5: 14, 6: 10 })
+  // When evens are outnumbered by odds, this much probability moves from odd tiles to even
+  // tiles (capped at all of it). At 0.5 the next tile is almost always even in that case.
+  const EVEN_ASSIST_BONUS = 0.5
   const FIRST_UNLOCK = Object.freeze([8, 10, 12])
   const SECOND_UNLOCK = Object.freeze([14, 16])
   const MILLER_RABIN_WITNESSES = Object.freeze([2n, 325n, 9375n, 28178n, 450775n, 9780504n, 1795265022n])
@@ -19,7 +25,7 @@
   // thresholds, merge rules, how many random numbers are drawn or in what order, or the PRNG.
   // The server refuses to verify a run that started under a different version, and the golden
   // run in the backend tests fails until you bump it and regenerate the fixture.
-  const ENGINE_VERSION = '1'
+  const ENGINE_VERSION = '2'
 
   // A run is logged as one letter per effective move.
   const MOVE_CODES = Object.freeze({ U: 'up', D: 'down', L: 'left', R: 'right' })
@@ -168,7 +174,7 @@
     const oddCount = board.filter(value => value > 0 && value % 2 === 1).length
     const assist = evenCount < oddCount
     const evenShare = assist
-      ? Math.min(1, evenWeight / totalWeight + 0.2)
+      ? Math.min(1, evenWeight / totalWeight + EVEN_ASSIST_BONUS)
       : evenWeight / totalWeight
     const oddShare = 1 - evenShare
     const distribution = {}
@@ -318,7 +324,7 @@
       board,
       score: state.score + scoreDelta,
       largestPrime: Math.max(state.largestPrime || 0, ...mergedValues),
-      goalAchieved: Boolean(state.goalAchieved || mergedValues.includes(101)),
+      goalAchieved: Boolean(state.goalAchieved || mergedValues.some((value) => value >= 101)),
       unlockedTiles: unlockForBoard(board, state.unlockedTiles)
     }
     const spawnedState = spawnTile(nextState, random)
@@ -361,6 +367,7 @@
 
   return {
     BASE_SPAWN_WEIGHTS,
+    EVEN_ASSIST_BONUS,
     DIRECTION_CODES,
     MOVE_CODES,
     SIZE,

@@ -1,29 +1,29 @@
 {
-  "engineVersion": "1",
+  "engineVersion": "2",
   "seed": 424242,
-  "moveLog": "LULULLUUDULULLUULUDLULDLULUULUURUUUDULLULUUULURLUUDLL",
+  "moveLog": "LULULLUUUDULLLLUULDLULUUUUUULUULULUUUDLLULDLULDLLUDR",
   "expected": {
-    "moveCount": 53,
-    "score": 689,
-    "largestPrime": 43,
+    "moveCount": 52,
+    "score": 714,
+    "largestPrime": 47,
     "status": "game-over",
     "board": [
-      19,
-      31,
-      43,
       2,
-      8,
       13,
-      7,
-      19,
-      7,
       19,
       2,
+      19,
+      47,
       2,
-      43,
-      8,
+      2,
+      31,
+      23,
       4,
-      6
+      8,
+      23,
+      41,
+      4,
+      8
     ]
   }
 }

@@ -1,0 +1,591 @@
+{
+  "rules": "A-even45-u5",
+  "bot": "expectimax-1",
+  "trainSeeds": [
+    1000000,
+    400
+  ],
+  "heldOutSeeds": [
+    5000000,
+    2000
+  ],
+  "default": {
+    "empty": 3,
+    "merge": 4,
+    "even": -0.5,
+    "odd": -0.5,
+    "evenEven": -0.5,
+    "oddOdd": -0.2,
+    "stranded": -0.3,
+    "logMax": 2
+  },
+  "tuned": {
+    "empty": 4.2732197239995005,
+    "merge": 2.7856126088649034,
+    "even": -0.5,
+    "odd": -0.7791604944830761,
+    "evenEven": -0.5,
+    "oddOdd": -0.4980411890987307,
+    "stranded": -0.3,
+    "logMax": 2
+  },
+  "heldOut": {
+    "default": {
+      "games": 2000,
+      "wins": 610,
+      "winRate": 0.305,
+      "winCI": [
+        0.2852114779966111,
+        0.32553619786758886
+      ],
+      "refereeConfirmed": 0,
+      "refereeDisagreements": 610,
+      "reach23": 0.9985,
+      "reach53": 0.913,
+      "reach89": 0.5535,
+      "moves": {
+        "p10": 58,
+        "median": 77,
+        "p90": 98
+      },
+      "largest": {
+        "median": 89,
+        "p90": 113,
+        "max": 181
+      },
+      "score": {
+        "median": 1939,
+        "p90": 3175
+      },
+      "capped": 0,
+      "msPerMove": 0.024478325216662936
+    },
+    "tuned": {
+      "games": 2000,
+      "wins": 648,
+      "winRate": 0.324,
+      "winCI": [
+        0.30384330103937957,
+        0.344831524356001
+      ],
+      "refereeConfirmed": 1,
+      "refereeDisagreements": 647,
+      "reach23": 1,
+      "reach53": 0.9105,
+      "reach89": 0.563,
+      "moves": {
+        "p10": 56,
+        "median": 76,
+        "p90": 97
+      },
+      "largest": {
+        "median": 89,
+        "p90": 113,
+        "max": 241
+      },
+      "score": {
+        "median": 1899,
+        "p90": 3120
+      },
+      "capped": 0,
+      "msPerMove": 0.02540193210287804
+    }
+  },
+  "history": [
+    {
+      "iter": 0,
+      "fit": 117.995,
+      "wins": 135,
+      "weights": {
+        "empty": 3,
+        "merge": 4,
+        "even": -0.5,
+        "odd": -0.5,
+        "evenEven": -0.5,
+        "oddOdd": -0.2,
+        "stranded": -0.3,
+        "logMax": 2
+      }
+    },
+    {
+      "iter": 1,
+      "tried": "merge",
+      "delta": 0.6270384917967021,
+      "fit": 112.815,
+      "wins": 121,
+      "accepted": false
+    },
+    {
+      "iter": 2,
+      "tried": "evenEven",
+      "delta": -0.343454251983203,
+      "fit": 115.295,
+      "wins": 128,
+      "accepted": false
+    },
+    {
+      "iter": 3,
+      "tried": "merge",
+      "delta": -1.2143873911350966,
+      "fit": 121.815,
+      "wins": 145,
+      "accepted": true
+    },
+    {
+      "iter": 4,
+      "tried": "even",
+      "delta": 0.3709686648426577,
+      "fit": 121.695,
+      "wins": 141,
+      "accepted": false
+    },
+    {
+      "iter": 5,
+      "tried": "stranded",
+      "delta": -0.34542880666907877,
+      "fit": 118.865,
+      "wins": 136,
+      "accepted": false
+    },
+    {
+      "iter": 6,
+      "tried": "empty",
+      "delta": 1.2732197239995005,
+      "fit": 123.75,
+      "wins": 154,
+      "accepted": true
+    },
+    {
+      "iter": 7,
+      "tried": "merge",
+      "delta": 0.6239224330737787,
+      "fit": 121.025,
+      "wins": 142,
+      "accepted": false
+    },
+    {
+      "iter": 8,
+      "tried": "oddOdd",
+      "delta": 0.38962268087547275,
+      "fit": 116.85,
+      "wins": 129,
+      "accepted": false
+    },
+    {
+      "iter": 9,
+      "tried": "stranded",
+      "delta": 0.3238904322590679,
+      "fit": 120.69,
+      "wins": 143,
+      "accepted": false
+    },
+    {
+      "iter": 10,
+      "tried": "oddOdd",
+      "delta": -0.2980411890987307,
+      "fit": 125.755,
+      "wins": 157,
+      "accepted": true
+    },
+    {
+      "iter": 11,
+      "tried": "odd",
+      "delta": -0.27916049448307606,
+      "fit": 128.455,
+      "wins": 163,
+      "accepted": true
+    },
+    {
+      "iter": 12,
+      "tried": "stranded",
+      "delta": -0.12752498680260033,
+      "fit": 123.88,
+      "wins": 151,
+      "accepted": false
+    },
+    {
+      "iter": 13,
+      "tried": "evenEven",
+      "delta": 0.25940821786411106,
+      "fit": 121.895,
+      "wins": 145,
+      "accepted": false
+    },
+    {
+      "iter": 14,
+      "tried": "oddOdd",
+      "delta": -0.33847417899873106,
+      "fit": 121.135,
+      "wins": 142,
+      "accepted": false
+    },
+    {
+      "iter": 15,
+      "tried": "even",
+      "delta": -0.16711581748444587,
+      "fit": 123.515,
+      "wins": 149,
+      "accepted": false
+    },
+    {
+      "iter": 16,
+      "tried": "odd",
+      "delta": 0.465835615435751,
+      "fit": 126.08,
+      "wins": 157,
+      "accepted": false
+    },
+    {
+      "iter": 17,
+      "tried": "oddOdd",
+      "delta": 0.16172770318575205,
+      "fit": 120.89,
+      "wins": 143,
+      "accepted": false
+    },
+    {
+      "iter": 18,
+      "tried": "oddOdd",
+      "delta": -0.1280488955648616,
+      "fit": 124.705,
+      "wins": 152,
+      "accepted": false
+    },
+    {
+      "iter": 19,
+      "tried": "odd",
+      "delta": -0.3437003230771321,
+      "fit": 124.37,
+      "wins": 149,
+      "accepted": false
+    },
+    {
+      "iter": 20,
+      "tried": "logMax",
+      "delta": 0.9665887166745961,
+      "fit": 125.45,
+      "wins": 157,
+      "accepted": false
+    },
+    {
+      "iter": 21,
+      "tried": "stranded",
+      "delta": 0.34948255159892144,
+      "fit": 116.865,
+      "wins": 127,
+      "accepted": false
+    },
+    {
+      "iter": 22,
+      "tried": "oddOdd",
+      "delta": 0.3391653619101271,
+      "fit": 120.205,
+      "wins": 140,
+      "accepted": false
+    },
+    {
+      "iter": 23,
+      "tried": "logMax",
+      "delta": -0.7151099789887667,
+      "fit": 127.1,
+      "wins": 161,
+      "accepted": false
+    },
+    {
+      "iter": 24,
+      "tried": "evenEven",
+      "delta": -0.17177084717899563,
+      "fit": 127.235,
+      "wins": 161,
+      "accepted": false
+    },
+    {
+      "iter": 25,
+      "tried": "oddOdd",
+      "delta": -0.10876688618212937,
+      "fit": 123.845,
+      "wins": 149,
+      "accepted": false
+    },
+    {
+      "iter": 26,
+      "tried": "oddOdd",
+      "delta": -0.30387330496218057,
+      "fit": 122.985,
+      "wins": 148,
+      "accepted": false
+    },
+    {
+      "iter": 27,
+      "tried": "even",
+      "delta": 0.1232336334977299,
+      "fit": 126.8,
+      "wins": 159,
+      "accepted": false
+    },
+    {
+      "iter": 28,
+      "tried": "logMax",
+      "delta": -0.8981836200226099,
+      "fit": 126.465,
+      "wins": 159,
+      "accepted": false
+    },
+    {
+      "iter": 29,
+      "tried": "empty",
+      "delta": -2.0101050138189143,
+      "fit": 116.03,
+      "wins": 129,
+      "accepted": false
+    },
+    {
+      "iter": 30,
+      "tried": "even",
+      "delta": -0.38004939717706293,
+      "fit": 121.03,
+      "wins": 139,
+      "accepted": false
+    },
+    {
+      "iter": 31,
+      "tried": "oddOdd",
+      "delta": 0.26397000705823304,
+      "fit": 120.83,
+      "wins": 142,
+      "accepted": false
+    },
+    {
+      "iter": 32,
+      "tried": "stranded",
+      "delta": -0.28345870977267623,
+      "fit": 122.03,
+      "wins": 145,
+      "accepted": false
+    },
+    {
+      "iter": 33,
+      "tried": "oddOdd",
+      "delta": -0.304629468228668,
+      "fit": 122.985,
+      "wins": 148,
+      "accepted": false
+    },
+    {
+      "iter": 34,
+      "tried": "odd",
+      "delta": 0.22594811353774094,
+      "fit": 127.08,
+      "wins": 160,
+      "accepted": false
+    },
+    {
+      "iter": 35,
+      "tried": "oddOdd",
+      "delta": 0.342543487935327,
+      "fit": 121.985,
+      "wins": 147,
+      "accepted": false
+    },
+    {
+      "iter": 36,
+      "tried": "even",
+      "delta": 0.11781039623077957,
+      "fit": 126.74,
+      "wins": 159,
+      "accepted": false
+    },
+    {
+      "iter": 37,
+      "tried": "odd",
+      "delta": 0.33007038616937057,
+      "fit": 124.67,
+      "wins": 153,
+      "accepted": false
+    },
+    {
+      "iter": 38,
+      "tried": "merge",
+      "delta": -1.734786907688452,
+      "fit": 111.42,
+      "wins": 112,
+      "accepted": false
+    },
+    {
+      "iter": 39,
+      "tried": "empty",
+      "delta": -1.096334284929757,
+      "fit": 122.51,
+      "wins": 147,
+      "accepted": false
+    },
+    {
+      "iter": 40,
+      "tried": "odd",
+      "delta": -0.278764930082304,
+      "fit": 125.685,
+      "wins": 154,
+      "accepted": false
+    },
+    {
+      "iter": 41,
+      "tried": "evenEven",
+      "delta": 0.378963750586845,
+      "fit": 116.355,
+      "wins": 126,
+      "accepted": false
+    },
+    {
+      "iter": 42,
+      "tried": "even",
+      "delta": -0.28972055833786725,
+      "fit": 121.4,
+      "wins": 143,
+      "accepted": false
+    },
+    {
+      "iter": 43,
+      "tried": "logMax",
+      "delta": 0.5602861730847508,
+      "fit": 124.615,
+      "wins": 154,
+      "accepted": false
+    },
+    {
+      "iter": 44,
+      "tried": "merge",
+      "delta": -0.6580424822982422,
+      "fit": 116.815,
+      "wins": 125,
+      "accepted": false
+    },
+    {
+      "iter": 45,
+      "tried": "oddOdd",
+      "delta": -0.13593821223825214,
+      "fit": 123.06,
+      "wins": 146,
+      "accepted": false
+    },
+    {
+      "iter": 46,
+      "tried": "even",
+      "delta": 0.18183662259019912,
+      "fit": 126.39,
+      "wins": 159,
+      "accepted": false
+    },
+    {
+      "iter": 47,
+      "tried": "empty",
+      "delta": 1.0953606321125264,
+      "fit": 124.49,
+      "wins": 152,
+      "accepted": false
+    },
+    {
+      "iter": 48,
+      "tried": "merge",
+      "delta": -1.0898541612641521,
+      "fit": 114.52,
+      "wins": 117,
+      "accepted": false
+    },
+    {
+      "iter": 49,
+      "tried": "merge",
+      "delta": 1.7104806311699383,
+      "fit": 111.845,
+      "wins": 114,
+      "accepted": false
+    },
+    {
+      "iter": 50,
+      "tried": "even",
+      "delta": 0.13298267753329127,
+      "fit": 126.155,
+      "wins": 157,
+      "accepted": false
+    },
+    {
+      "iter": 51,
+      "tried": "odd",
+      "delta": -0.17811575715101383,
+      "fit": 127.8,
+      "wins": 162,
+      "accepted": false
+    },
+    {
+      "iter": 52,
+      "tried": "empty",
+      "delta": -1.9811179209816066,
+      "fit": 116.145,
+      "wins": 129,
+      "accepted": false
+    },
+    {
+      "iter": 53,
+      "tried": "oddOdd",
+      "delta": 0.21929209554567933,
+      "fit": 121.355,
+      "wins": 145,
+      "accepted": false
+    },
+    {
+      "iter": 54,
+      "tried": "empty",
+      "delta": -1.3448275787864357,
+      "fit": 119.215,
+      "wins": 135,
+      "accepted": false
+    },
+    {
+      "iter": 55,
+      "tried": "stranded",
+      "delta": -0.23188302608672529,
+      "fit": 122.73,
+      "wins": 146,
+      "accepted": false
+    },
+    {
+      "iter": 56,
+      "tried": "empty",
+      "delta": -1.8098884894132492,
+      "fit": 116.655,
+      "wins": 129,
+      "accepted": false
+    },
+    {
+      "iter": 57,
+      "tried": "odd",
+      "delta": -0.24782476605430034,
+      "fit": 126.04,
+      "wins": 156,
+      "accepted": false
+    },
+    {
+      "iter": 58,
+      "tried": "even",
+      "delta": -0.37926224887836724,
+      "fit": 121.03,
+      "wins": 139,
+      "accepted": false
+    },
+    {
+      "iter": 59,
+      "tried": "merge",
+      "delta": -0.9702555013561756,
+      "fit": 114.485,
+      "wins": 119,
+      "accepted": false
+    },
+    {
+      "iter": 60,
+      "tried": "even",
+      "delta": 0.3630951424688101,
+      "fit": 123.6,
+      "wins": 147,
+      "accepted": false
+    }
+  ]
+}

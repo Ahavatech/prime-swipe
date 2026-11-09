@@ -3,7 +3,10 @@ const assert = require('node:assert/strict')
 const fs = require('node:fs')
 const path = require('node:path')
 const vm = require('node:vm')
+const net = require('node:net')
 const GameEngine = require('../game-engine')
+const RunSession = require('../run-session')
+const { createLeaderboardApi } = require('../leaderboard-api')
 
 const ids = [
   'grid', 'score', 'best-prime', 'goal-status', 'game-status', 'notice',
@@ -13,7 +16,8 @@ const ids = [
   'final-largest-prime', 'final-moves', 'final-duration', 'final-best',
   'score-form', 'display-name', 'name-error', 'submit-score',
   'submission-status', 'play-again', 'close-summary', 'load-leaderboard',
-  'leaderboard-status', 'leaderboard-table-wrap', 'leaderboard-entries'
+  'leaderboard-status', 'leaderboard-table-wrap', 'leaderboard-entries',
+  'restart-after-submit'
 ]
 
 class FakeElement {
@@ -132,7 +136,7 @@ function makeApi(overrides = {}) {
             seed: 12345,
             engineVersion: GameEngine.VERSION,
             issuedAt: '2026-11-07T10:00:00.000Z',
-            expiresAt: '2026-11-07T16:00:00.000Z',
+            expiresAt: new Date(Date.now() + 60 * 60 * 1000).toISOString(),
             source: 'backend'
           }
       },
@@ -203,10 +207,12 @@ function createApp({ api, initialState, outcome, storageError = null } = {}) {
   }
   const moveRandoms = []
   const seededRandoms = []
+  const seededSeeds = []
   const gameRandoms = []
   const engine = {
     ...GameEngine,
     createSeededRandom(seed) {
+      seededSeeds.push(seed)
       const random = GameEngine.createSeededRandom(seed)
       seededRandoms.push(random)
       return random
@@ -237,6 +243,7 @@ function createApp({ api, initialState, outcome, storageError = null } = {}) {
   vm.runInNewContext(script, {
     document,
     GameEngine: engine,
+    RunSession,
     LeaderboardAPI: api || makeApi().api,
     localStorage,
     crypto: { randomUUID: () => 'fixed-run-id' },
@@ -245,7 +252,18 @@ function createApp({ api, initialState, outcome, storageError = null } = {}) {
     Math
   })
   const ready = document.dispatch('DOMContentLoaded')
-  return { document, elements, grid: elements.get('grid'), stored, ready, engine, moveRandoms, seededRandoms, gameRandoms }
+  return {
+    document,
+    elements,
+    grid: elements.get('grid'),
+    stored,
+    ready,
+    engine,
+    moveRandoms,
+    seededRandoms,
+    seededSeeds,
+    gameRandoms
+  }
 }
 
 function gameWith(values, overrides = {}) {
@@ -301,7 +319,8 @@ test('a failed run request leaves gameplay available and disables score submissi
   assert.equal(app.elements.get('score').textContent, '2')
   assert.equal(app.elements.get('game-over-dialog').open, true)
   assert.equal(app.elements.get('submit-score').disabled, true)
-  assert.match(app.elements.get('submission-status').textContent, /You can still play/)
+  assert.equal(app.elements.get('score-form').hidden, true)
+  assert.equal(app.elements.get('notice').textContent, 'Practice game, scores cannot be submitted.')
   assert.equal(calls.calls.submissions.length, 0)
 })
 
@@ -322,10 +341,100 @@ test('a server engine-version mismatch starts an unsubmitable local game', async
   })
   await app.ready
 
-  assert.equal(app.seededRandoms.length, 0)
-  assert.match(app.elements.get('game-status').textContent, /rules do not match/)
+  assert.equal(app.seededRandoms.length, 1)
+  assert.match(app.elements.get('game-status').textContent, /Practice game/)
   app.document.dispatch('keydown', { key: 'ArrowLeft' })
   assert.equal(app.elements.get('score').textContent, '2')
+})
+
+test('swipes are ignored while a ranked run is pending and stale starts are discarded', async () => {
+  const resolvers = []
+  const calls = makeApi({
+    startRun: () => new Promise(resolve => resolvers.push(resolve))
+  })
+  const app = createApp({ api: calls.api })
+
+  assert.equal(app.elements.get('notice').textContent, 'Starting ranked run…')
+  app.document.dispatch('keydown', { key: 'ArrowLeft' })
+  assert.equal(app.elements.get('score').textContent, '0')
+  app.elements.get('new-game').dispatch('click')
+
+  const run = seed => ({
+    runToken: `token-${seed}`,
+    seed,
+    engineVersion: GameEngine.VERSION,
+    issuedAt: new Date().toISOString(),
+    expiresAt: new Date(Date.now() + 60_000).toISOString()
+  })
+  resolvers[0](run(111))
+  resolvers[1](run(222))
+  await app.ready
+  await settle()
+
+  assert.deepEqual(app.seededSeeds, [222])
+})
+
+test('an empty API base falls back to playable practice mode', async () => {
+  const api = createLeaderboardApi()
+  const app = createApp({
+    api,
+    initialState: gameWith({ 0: 1, 1: 1 }),
+    outcome: { state: gameWith({}, { score: 2, largestPrime: 2, status: 'game-over' }), moved: true, scoreDelta: 2 }
+  })
+
+  await app.ready
+  assert.equal(app.elements.get('notice').textContent, 'Practice game, scores cannot be submitted.')
+  app.document.dispatch('keydown', { key: 'ArrowLeft' })
+  assert.equal(app.elements.get('score-form').hidden, true)
+  app.elements.get('score-form').dispatch('submit')
+  assert.match(app.elements.get('submission-status').textContent, /cannot be submitted/)
+})
+
+test('a stopped backend falls back to playable practice mode', async () => {
+  const probe = net.createServer()
+  await new Promise((resolve, reject) => {
+    probe.once('error', reject)
+    probe.listen(0, '127.0.0.1', resolve)
+  })
+  const { port } = probe.address()
+  await new Promise((resolve, reject) => probe.close(error => error ? reject(error) : resolve()))
+  const api = createLeaderboardApi({ baseUrl: `http://127.0.0.1:${port}`, timeoutMs: 500 })
+  const app = createApp({ api })
+
+  await app.ready
+  assert.equal(app.elements.get('notice').textContent, 'Practice game, scores cannot be submitted.')
+  app.document.dispatch('keydown', { key: 'ArrowRight' })
+  assert.notEqual(app.elements.get('score').textContent, '')
+  assert.equal(app.elements.get('score-form').hidden, true)
+})
+
+test('an expired ranked session skips rank and submit requests and offers a new game', async () => {
+  const calls = makeApi({
+    startRun: async () => ({
+      runToken: 'expired-token',
+      seed: 1,
+      engineVersion: GameEngine.VERSION,
+      issuedAt: '2026-11-07T10:00:00.000Z',
+      expiresAt: new Date(Date.now() - 1).toISOString()
+    })
+  })
+  const app = createApp({
+    api: calls.api,
+    initialState: gameWith({ 0: 1, 1: 1 }),
+    outcome: { state: gameWith({}, { score: 2, status: 'game-over' }), moved: true, scoreDelta: 2 }
+  })
+
+  await app.ready
+  app.document.dispatch('keydown', { key: 'ArrowLeft' })
+  app.elements.get('display-name').value = 'ACE'
+  app.elements.get('score-form').dispatch('submit')
+  await settle()
+
+  assert.equal(calls.calls.rank.length, 0)
+  assert.equal(calls.calls.submissions.length, 0)
+  assert.equal(app.elements.get('score-form').hidden, true)
+  assert.equal(app.elements.get('restart-after-submit').hidden, false)
+  assert.match(app.elements.get('submission-status').textContent, /This run has expired/)
 })
 
 test('keyboard merge updates Score, largest-prime Best, and local persistence', async () => {
@@ -563,6 +672,59 @@ test('failed submission is not shown as success and retry reuses the same run pr
   assert.match(app.elements.get('submission-status').textContent, /rank 2/)
 })
 
+test('terminal run errors hide retry and offer a fresh game', async () => {
+  const calls = makeApi({
+    submitScore: async () => {
+      const error = new Error('This run was already submitted. Start a new game to submit another score.')
+      error.code = 'RUN_ALREADY_SUBMITTED'
+      throw error
+    }
+  })
+  const app = createApp({
+    api: calls.api,
+    initialState: gameWith({ 0: 1, 1: 1 }),
+    outcome: { state: gameWith({}, { score: 2, status: 'game-over' }), moved: true, scoreDelta: 2 }
+  })
+
+  await app.ready
+  app.document.dispatch('keydown', { key: 'ArrowLeft' })
+  app.elements.get('display-name').value = 'ACE'
+  app.elements.get('score-form').dispatch('submit')
+  await settle()
+
+  assert.equal(app.elements.get('score-form').hidden, true)
+  assert.equal(app.elements.get('submit-score').hidden, true)
+  assert.equal(app.elements.get('restart-after-submit').hidden, false)
+  assert.match(app.elements.get('submission-status').textContent, /already submitted/)
+})
+
+test('temporarily unavailable submissions keep a retry action', async () => {
+  const calls = makeApi({
+    submitScore: async () => {
+      const error = new Error('Leaderboard service could not be reached.')
+      error.code = 'UNAVAILABLE'
+      throw error
+    }
+  })
+  const app = createApp({
+    api: calls.api,
+    initialState: gameWith({ 0: 1, 1: 1 }),
+    outcome: { state: gameWith({}, { score: 2, status: 'game-over' }), moved: true, scoreDelta: 2 }
+  })
+
+  await app.ready
+  app.document.dispatch('keydown', { key: 'ArrowLeft' })
+  app.elements.get('display-name').value = 'ACE'
+  app.elements.get('score-form').dispatch('submit')
+  await settle()
+
+  assert.equal(app.elements.get('score-form').hidden, false)
+  assert.equal(app.elements.get('submit-score').hidden, false)
+  assert.equal(app.elements.get('submit-score').textContent, 'Retry submission')
+  assert.equal(app.elements.get('restart-after-submit').hidden, true)
+  assert.match(app.elements.get('submission-status').textContent, /try this same run/)
+})
+
 test('leaderboard control interleaves entries and labels legacy verification status', async () => {
   const calls = makeApi({
     leaderboard: async () => ({
@@ -596,8 +758,10 @@ test('leaderboard control interleaves entries and labels legacy verification sta
   assert.equal(app.elements.get('leaderboard-dialog').open, true)
   assert.equal(calls.calls.leaderboard, 1)
   const rows = app.elements.get('leaderboard-entries').children
-  assert.deepEqual(rows[0].children.map(cell => cell.textContent), ['1', 'ACE', '2,400', '101', 'Verified'])
-  assert.deepEqual(rows[1].children.map(cell => cell.textContent), ['2', 'OLD ACE', '1,200', '12', 'Legacy (unverified)'])
+  assert.deepEqual(rows[0].children.map(cell => cell.textContent), ['1', 'ACE', '2,400', '101'])
+  assert.deepEqual(rows[1].children.map(cell => cell.textContent), ['2', 'OLD ACE', '1,200', '12'])
+  assert.equal(rows[1].children[1].children[0].textContent, 'unverified')
+  assert.equal(rows[0].children[1].children.length, 0)
   assert.equal(app.elements.get('leaderboard-table-wrap').hidden, false)
   app.elements.get('close-leaderboard').dispatch('click')
   assert.equal(app.elements.get('leaderboard-dialog').open, false)

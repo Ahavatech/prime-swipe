@@ -1,0 +1,19 @@
+even60-assist20-unlock5    rand 0.0% greedy 1.0% look 1.0% MC 3.8% moves(MC med) 70  12s
+even60-assist20-unlock2    rand 0.0% greedy 0.3% look 0.3% MC 0.6% moves(MC med) 68  10s
+even60-assist35-unlock5    rand 1.0% greedy 4.8% look 7.2% MC 30.0% moves(MC med) 73  12s
+even60-assist35-unlock2    rand 0.0% greedy 2.0% look 3.0% MC 10.0% moves(MC med) 76  13s
+even60-assist50-unlock5    rand 0.8% greedy 5.5% look 8.0% MC 36.3% moves(MC med) 72  13s
+even60-assist50-unlock2    rand 0.2% greedy 2.3% look 3.2% MC 12.5% moves(MC med) 76  11s
+even45-assist20-unlock5    rand 0.0% greedy 0.0% look 0.0% MC 1.3% moves(MC med) 52  7s
+even45-assist20-unlock2    rand 0.0% greedy 0.0% look 0.0% MC 0.0% moves(MC med) 50  6s
+even45-assist35-unlock5    rand 0.2% greedy 2.5% look 3.0% MC 9.4% moves(MC med) 69  12s
+even45-assist35-unlock2    rand 0.0% greedy 0.0% look 0.0% MC 0.6% moves(MC med) 66  10s
+even45-assist50-unlock5    rand 1.2% greedy 9.7% look 11.3% MC 48.1% moves(MC med) 71  13s
+even45-assist50-unlock2    rand 0.2% greedy 2.2% look 2.0% MC 13.8% moves(MC med) 79  13s
+even30-assist20-unlock5    rand 0.0% greedy 0.0% look 0.0% MC 0.0% moves(MC med) 42  5s
+even30-assist20-unlock2    rand 0.0% greedy 0.0% look 0.0% MC 0.0% moves(MC med) 40  4s
+even30-assist35-unlock5    rand 0.0% greedy 0.2% look 0.5% MC 1.3% moves(MC med) 53  7s
+even30-assist35-unlock2    rand 0.0% greedy 0.0% look 0.0% MC 0.0% moves(MC med) 50  6s
+even30-assist50-unlock5    rand 0.5% greedy 5.3% look 5.5% MC 27.5% moves(MC med) 68  12s
+even30-assist50-unlock2    rand 0.0% greedy 0.7% look 0.2% MC 4.4% moves(MC med) 71  11s
+SWEEP DONE

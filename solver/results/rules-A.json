@@ -1,0 +1,8 @@
+{
+  "name": "A-even45-u5",
+  "base": { "1": 28, "2": 19, "3": 14, "4": 15, "5": 14, "6": 10 },
+  "unlocks": [ { "at": 23, "tiles": [8, 10, 12] }, { "at": 53, "tiles": [14, 16] } ],
+  "unlockWeight": 5,
+  "assistBonus": 0.5,
+  "goal": 101
+}

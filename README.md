@@ -27,9 +27,9 @@ until the next swipe. The rules and leaderboard open in dialogs.
 - **Score** is the sum of all merged tile values. **Largest prime** is the
   largest prime tile built during the run. Device Best tracks Largest prime,
   not Score.
-- Building exactly 101 marks the goal reached. Play continues. The run ends
-  only when the board is full and no horizontal or vertical neighbors can
-  merge.
+- Building 101 or higher in a single merge marks the goal reached (a jump
+  from 97 to 103 still counts). Play continues. The run ends only when the
+  board is full and no horizontal or vertical neighbors can merge.
 
 ## Run locally
 
@@ -42,7 +42,8 @@ npm test
 python -m http.server 5500
 ```
 
-Open `http://localhost:5500`.
+Open `http://localhost:5500`. With the API-base meta tag empty, games remain
+playable in practice mode, but their scores cannot be submitted.
 
 To run the API locally, open a terminal at the repository root:
 
@@ -79,15 +80,22 @@ npm test --prefix backend
 
 ## Leaderboard API
 
-The browser sends a run only after the player enters a name and submits it.
-The API ranks by Score and returns Largest prime separately. Repeating a
-submission with the same idempotency key and payload returns the saved result.
+The browser starts a server-issued seeded run, then sends its move log only
+after the player enters a name and submits it. The API replays the run and
+ranks its verified Score; Largest prime is returned separately. Retrying the
+same name, run token, move log, and score returns the original result.
 
+- `POST /api/v1/runs` issues the seed and run token for a ranked game.
+- `POST /api/v1/scores` submits `{ displayName, runToken, moveLog, score }`.
 - `GET /api/v1/leaderboard/rank?score=<integer>` previews rank by Score.
-- `POST /api/v1/scores` submits `{ displayName, score, largestPrime, moves, durationSeconds }` with an `Idempotency-Key` header.
 - `GET /api/v1/leaderboard` returns the public rankings.
 - `GET /api/v1/health` checks the API and database.
 - `/openapi.json` and `/api-docs/` provide the API specification and UI.
+
+Run the real API/client verification flow locally with
+`node scripts/e2e-verified-runs.mjs`. It starts the backend with a temporary
+database and generated development token secret, then checks a verified
+submission, an identical retry, and rejection of a tampered move log.
 
 ## Manual release
 

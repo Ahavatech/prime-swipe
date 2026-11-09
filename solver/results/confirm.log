@@ -1,0 +1,8 @@
+random           win   1.06% [0.81–1.38]  ≥53  39.7%  moves p10/med/p90 42/55/71  largest med/p90 47/73  0.005 ms/move  (engine confirmed 53/53 wins)  overshoot 1.1%
+greedy           win   7.18% [6.50–7.93]  ≥53  73.5%  moves p10/med/p90 47/62/80  largest med/p90 67/101  0.005 ms/move  (engine confirmed 359/359 wins)  overshoot 6.4%
+lookahead        win   8.44% [7.70–9.24]  ≥53  76.3%  moves p10/med/p90 48/64/82  largest med/p90 71/101  0.007 ms/move  (engine confirmed 422/422 wins)  overshoot 7.4%
+expectimax-1     win  29.70% [27.74–31.74]  ≥53  91.3%  moves p10/med/p90 57/77/97  largest med/p90 89/113  0.026 ms/move  (engine confirmed 594/594 wins)  overshoot 13.9%
+expectimax-1 (tuned) win  29.35% [27.40–31.38]  ≥53  91.5%  moves p10/med/p90 56/76/97  largest med/p90 89/113  0.026 ms/move  (engine confirmed 587/587 wins)  overshoot 13.5%
+expectimax-2     win  47.33% [41.75–52.98]  ≥53  93.0%  moves p10/med/p90 57/80/98  largest med/p90 101/109  1.781 ms/move  (engine confirmed 142/142 wins)  overshoot 10.0%
+montecarlo       win  44.80% [40.50–49.18]  ≥53  88.2%  moves p10/med/p90 49/65/84  largest med/p90 89/101  16.098 ms/move  (engine confirmed 224/224 wins)  overshoot 3.0%
+CONFIRM DONE

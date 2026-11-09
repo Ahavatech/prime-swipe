@@ -10,6 +10,7 @@
 <link rel="stylesheet" href="styles.css">
 <script defer src="game-engine.js"></script>
 <script defer src="leaderboard-api.js"></script>
+<script defer src="run-session.js"></script>
 <script defer src="functions.js"></script>
 </head>
 <body>
@@ -66,11 +67,11 @@
         <li><span class="swatch swatch-odd" aria-hidden="true"></span>Odd tile, darker as it grows</li>
       </ul>
       <p>Every swipe that moves something adds one new tile. A tile built by a merge waits until the next swipe to merge again.</p>
-      <p>Build a 101 to reach the goal, then keep going. The run ends when the board is full and no neighbors add up to a prime.</p>
+      <p>Build a merge of 101 or higher to reach the goal, then keep going. The run ends when the board is full and no neighbors add up to a prime.</p>
       <details class="spawn-details">
         <summary>Spawn weights and parity assist</summary>
-        <p>Starting weights: 1 (20), 2 (25), 3 (10), 4 (20), 5 (10), 6 (15). At a board tile of 23, 8, 10, and 12 unlock; at 53, 14 and 16 unlock. Each unlocked tile has weight 5.</p>
-        <p>If there are fewer even tiles than odd tiles, even spawns gain 20 percentage points and odd spawns lose 20. Tile 1 counts as odd. Active weights are normalized; within each parity, relative weights stay the same.</p>
+        <p>Starting weights: 1 (28), 2 (19), 3 (14), 4 (15), 5 (14), 6 (10). At a board tile of 23, 8, 10, and 12 unlock; at 53, 14 and 16 unlock. Each unlocked tile has weight 5.</p>
+        <p>If there are fewer even tiles than odd tiles, even spawns gain 50 percentage points (capped at 100%) and odd spawns lose the same amount. In practice, when evens run short, the next tile is almost always even. Tile 1 counts as odd. Active weights are normalized; within each parity, relative weights stay the same.</p>
       </details>
     </div>
     <div class="dialog-actions">
@@ -84,7 +85,7 @@
     <div class="dialog-heading">
       <h2 id="leaderboard-title">Leaderboard</h2>
     </div>
-    <p>All scores are ordered together by cumulative Score. “Legacy (unverified)” marks scores from before replay verification; those scores are shown as originally recorded and could not be checked against a move history. Largest prime is listed separately.</p>
+    <p>Ranked by cumulative Score. Largest prime is listed separately.</p>
     <p id="leaderboard-status" class="section-status" role="status" aria-live="polite">Leaderboard is optional. No run is sent unless you choose to submit it.</p>
     <div id="leaderboard-table-wrap" class="table-wrap" hidden>
       <table>
@@ -95,7 +96,6 @@
             <th scope="col">Player</th>
             <th scope="col">Score</th>
             <th scope="col">Largest prime</th>
-            <th scope="col">Verification</th>
           </tr>
         </thead>
         <tbody id="leaderboard-entries"></tbody>
@@ -126,7 +126,7 @@
 
     <section class="submission-panel" aria-labelledby="submission-title">
       <h3 id="submission-title">Add your run to the board?</h3>
-      <p>Your display name, score, and move history are sent only when you submit. The server replays the moves to verify your score and rank.</p>
+      <p>Only your display name and run statistics are sent, and only after you submit. Rankings are confirmed by the server.</p>
       <form id="score-form" novalidate>
         <label for="display-name">Display name</label>
         <div class="name-entry">
@@ -137,6 +137,7 @@
         <p id="name-error" class="field-error" role="alert" hidden></p>
       </form>
       <p id="submission-status" class="section-status" role="status" aria-live="polite" aria-atomic="true"></p>
+      <button id="restart-after-submit" class="button button-outline" type="button" hidden>Start a new game</button>
     </section>
 
     <div class="dialog-actions">

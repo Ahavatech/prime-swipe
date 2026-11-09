@@ -10,6 +10,7 @@ const frontendFiles = [
   'styles.css',
   'game-engine.js',
   'leaderboard-api.js',
+  'run-session.js',
   'functions.js',
   'assets/fonts/aldrich-latin-400-normal.woff2',
   'assets/fonts/OFL.txt'

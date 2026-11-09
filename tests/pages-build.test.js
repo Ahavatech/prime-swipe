@@ -34,6 +34,7 @@ test('Pages staging publishes only allowlisted frontend files and injects API or
     'game-engine.js',
     'index.html',
     'leaderboard-api.js',
+    'run-session.js',
     'styles.css'
   ])
   assert.deepEqual(fs.readdirSync(path.join(output, 'assets', 'fonts')).sort(), [

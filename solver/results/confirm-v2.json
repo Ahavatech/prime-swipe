@@ -1,0 +1,281 @@
+{
+  "rules": {
+    "name": "v2",
+    "base": {
+      "1": 28,
+      "2": 19,
+      "3": 14,
+      "4": 15,
+      "5": 14,
+      "6": 10
+    },
+    "unlocks": [
+      {
+        "at": 23,
+        "tiles": [
+          8,
+          10,
+          12
+        ]
+      },
+      {
+        "at": 53,
+        "tiles": [
+          14,
+          16
+        ]
+      }
+    ],
+    "unlockWeight": 5,
+    "assistBonus": 0.5,
+    "goal": 101,
+    "goalExact": false
+  },
+  "bots": {
+    "random": {
+      "bot": "random",
+      "options": {},
+      "games": 5000,
+      "wins": 106,
+      "winRate": 0.0212,
+      "winCI": [
+        0.017559353655852664,
+        0.025575824723894615
+      ],
+      "refereeConfirmed": 106,
+      "refereeDisagreements": 0,
+      "reach23": 0.987,
+      "reach53": 0.3972,
+      "reach89": 0.044,
+      "moves": {
+        "p10": 42,
+        "median": 55,
+        "p90": 71
+      },
+      "largest": {
+        "median": 47,
+        "p90": 73,
+        "max": 113
+      },
+      "score": {
+        "median": 718,
+        "p90": 1415
+      },
+      "overshot": 0,
+      "capped": 0,
+      "msPerMove": 0.006342080940653861
+    },
+    "greedy": {
+      "bot": "greedy",
+      "options": {},
+      "games": 5000,
+      "wins": 677,
+      "winRate": 0.1354,
+      "winCI": [
+        0.12619550123415724,
+        0.1451643275821666
+      ],
+      "refereeConfirmed": 677,
+      "refereeDisagreements": 0,
+      "reach23": 0.9962,
+      "reach53": 0.7348,
+      "reach89": 0.2208,
+      "moves": {
+        "p10": 46,
+        "median": 61,
+        "p90": 78
+      },
+      "largest": {
+        "median": 67,
+        "p90": 101,
+        "max": 113
+      },
+      "score": {
+        "median": 1133,
+        "p90": 1951
+      },
+      "overshot": 0,
+      "capped": 0,
+      "msPerMove": 0.006599487558580845
+    },
+    "lookahead": {
+      "bot": "lookahead",
+      "options": {},
+      "games": 5000,
+      "wins": 793,
+      "winRate": 0.1586,
+      "winCI": [
+        0.14873692432153243,
+        0.16898728181640768
+      ],
+      "refereeConfirmed": 793,
+      "refereeDisagreements": 0,
+      "reach23": 0.997,
+      "reach53": 0.7628,
+      "reach89": 0.252,
+      "moves": {
+        "p10": 48,
+        "median": 63,
+        "p90": 80
+      },
+      "largest": {
+        "median": 71,
+        "p90": 101,
+        "max": 113
+      },
+      "score": {
+        "median": 1215,
+        "p90": 2057
+      },
+      "overshot": 0,
+      "capped": 0,
+      "msPerMove": 0.010188398963681596
+    },
+    "expectimax-1": {
+      "bot": "expectimax-1",
+      "options": {},
+      "games": 2000,
+      "wins": 877,
+      "winRate": 0.4385,
+      "winCI": [
+        0.4168913686522335,
+        0.4603444368126296
+      ],
+      "refereeConfirmed": 877,
+      "refereeDisagreements": 0,
+      "reach23": 0.998,
+      "reach53": 0.913,
+      "reach89": 0.5365,
+      "moves": {
+        "p10": 55,
+        "median": 73,
+        "p90": 92
+      },
+      "largest": {
+        "median": 89,
+        "p90": 103,
+        "max": 113
+      },
+      "score": {
+        "median": 1788,
+        "p90": 2693
+      },
+      "overshot": 0,
+      "capped": 0,
+      "msPerMove": 0.03187172014815933
+    },
+    "expectimax-1 (tuned)": {
+      "bot": "expectimax-1",
+      "options": {
+        "weights": {
+          "empty": 4.2732197239995005,
+          "merge": 2.7856126088649034,
+          "even": -0.5,
+          "odd": -0.7791604944830761,
+          "evenEven": -0.5,
+          "oddOdd": -0.4980411890987307,
+          "stranded": -0.3,
+          "logMax": 2
+        }
+      },
+      "games": 2000,
+      "wins": 864,
+      "winRate": 0.432,
+      "winCI": [
+        0.4104409277866626,
+        0.45381980020700713
+      ],
+      "refereeConfirmed": 864,
+      "refereeDisagreements": 0,
+      "reach23": 0.9985,
+      "reach53": 0.9145,
+      "reach89": 0.547,
+      "moves": {
+        "p10": 53,
+        "median": 72,
+        "p90": 91
+      },
+      "largest": {
+        "median": 89,
+        "p90": 103,
+        "max": 113
+      },
+      "score": {
+        "median": 1784,
+        "p90": 2654
+      },
+      "overshot": 0,
+      "capped": 0,
+      "msPerMove": 0.032769993992788515
+    },
+    "expectimax-2": {
+      "bot": "expectimax-2",
+      "options": {},
+      "games": 300,
+      "wins": 185,
+      "winRate": 0.6166666666666667,
+      "winCI": [
+        0.5605020926949223,
+        0.6698811069722727
+      ],
+      "refereeConfirmed": 185,
+      "refereeDisagreements": 0,
+      "reach23": 1,
+      "reach53": 0.93,
+      "reach89": 0.7,
+      "moves": {
+        "p10": 52,
+        "median": 75,
+        "p90": 93
+      },
+      "largest": {
+        "median": 101,
+        "p90": 103,
+        "max": 113
+      },
+      "score": {
+        "median": 1921,
+        "p90": 2766
+      },
+      "overshot": 0,
+      "capped": 0,
+      "msPerMove": 2.105300549550762
+    },
+    "montecarlo": {
+      "bot": "montecarlo",
+      "options": {
+        "rollouts": 48,
+        "horizon": 20
+      },
+      "games": 500,
+      "wins": 289,
+      "winRate": 0.578,
+      "winCI": [
+        0.534276169564903,
+        0.620534389944276
+      ],
+      "refereeConfirmed": 289,
+      "refereeDisagreements": 0,
+      "reach23": 1,
+      "reach53": 0.898,
+      "reach89": 0.638,
+      "moves": {
+        "p10": 47,
+        "median": 63,
+        "p90": 77
+      },
+      "largest": {
+        "median": 101,
+        "p90": 107,
+        "max": 113
+      },
+      "score": {
+        "median": 1320,
+        "p90": 1862
+      },
+      "overshot": 0,
+      "capped": 0,
+      "msPerMove": 20.411802849894016
+    }
+  }
+}
