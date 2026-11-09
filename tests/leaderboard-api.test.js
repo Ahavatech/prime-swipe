@@ -203,6 +203,8 @@ test('leaderboard supports largest-prime display sorting', async () => {
 
   await api.getLeaderboard({ sortBy: 'largestPrime' })
   assert.equal(requestUrl, 'https://api.example.test/api/v1/leaderboard?sort=largestPrime')
+  await api.getLeaderboard({ sortBy: 'largestPrimeAsc' })
+  assert.equal(requestUrl, 'https://api.example.test/api/v1/leaderboard?sort=largestPrimeAsc')
   await assert.rejects(api.getLeaderboard({ sortBy: 'other' }), { code: 'INVALID_SORT' })
 })
 

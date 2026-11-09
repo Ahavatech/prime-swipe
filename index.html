@@ -85,24 +85,25 @@
     <div class="dialog-heading">
       <h2 id="leaderboard-title">Leaderboard</h2>
     </div>
-    <p>Rank is based on cumulative Score. Choose how to sort the 12 displayed runs; unverified legacy runs are labeled.</p>
+    <p>Up to 12 runs are shown. Use the arrow beside Largest prime to change the sort; unverified legacy runs are labeled.</p>
     <p id="leaderboard-status" class="section-status" role="status" aria-live="polite">Leaderboard is optional. No run is sent unless you choose to submit it.</p>
-    <div id="leaderboard-sort-control" class="leaderboard-sort-control" hidden>
-      <label for="leaderboard-sort">Sort by</label>
-      <select id="leaderboard-sort" name="sort">
-        <option value="score">Score</option>
-        <option value="largestPrime">Largest prime</option>
-      </select>
-    </div>
     <div id="leaderboard-table-wrap" class="table-wrap" hidden>
       <table>
-        <caption>Prime Swipe runs; rank is based on cumulative Score</caption>
+        <caption>Run numbers follow the displayed order. Verified ranks are based on cumulative Score.</caption>
         <thead>
           <tr>
-            <th scope="col">Rank</th>
+            <th scope="col">No.</th>
             <th scope="col">Player</th>
             <th scope="col">Score</th>
-            <th scope="col">Largest prime</th>
+            <th id="largest-prime-heading" scope="col" aria-sort="none">
+              Largest prime
+              <button id="sort-largest-prime" class="sort-arrow" type="button" aria-label="Sort by largest prime" aria-pressed="false">
+                <svg viewBox="0 0 20 20" aria-hidden="true" focusable="false">
+                  <path class="sort-arrow-up" d="m6 8 4-4 4 4M10 4v6"></path>
+                  <path class="sort-arrow-down" d="m6 12 4 4 4-4m-4 4v-6"></path>
+                </svg>
+              </button>
+            </th>
           </tr>
         </thead>
         <tbody id="leaderboard-entries"></tbody>

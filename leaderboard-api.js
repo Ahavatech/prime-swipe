@@ -287,7 +287,7 @@
       },
 
       async getLeaderboard({ sortBy = 'score' } = {}) {
-        if (!['score', 'largestPrime'].includes(sortBy)) {
+        if (!['score', 'largestPrime', 'largestPrimeAsc'].includes(sortBy)) {
           throw new LeaderboardApiError('Choose a valid leaderboard sort.', 'INVALID_SORT')
         }
         const query = new URLSearchParams({ sort: sortBy })

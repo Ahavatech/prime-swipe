@@ -442,6 +442,11 @@ test('legacy rows appear in the public list but stay out of projected ranks', as
     primeOrdered.entries.map(entry => entry.displayName),
     ['LEGACY0', 'PLAYER0', 'LEGACY1', 'PLAYER1']
   )
+  const primeAscending = await (await api.request('/api/v1/leaderboard?sort=largestPrimeAsc')).json()
+  assert.deepEqual(
+    primeAscending.entries.map(entry => entry.displayName),
+    ['LEGACY1', 'PLAYER1', 'PLAYER0', 'LEGACY0']
+  )
 
   const preview = await (await api.request('/api/v1/leaderboard/rank?score=900')).json()
   assert.deepEqual(preview, { rank: 2, qualifies: true, leaderboardLimit: 100 })

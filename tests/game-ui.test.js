@@ -16,7 +16,7 @@ const ids = [
   'final-largest-prime', 'final-moves', 'final-duration', 'final-best',
   'score-form', 'display-name', 'name-error', 'submit-score',
   'submission-status', 'play-again', 'close-summary', 'load-leaderboard',
-  'leaderboard-status', 'leaderboard-sort-control', 'leaderboard-sort',
+  'leaderboard-status', 'sort-largest-prime', 'largest-prime-heading',
   'leaderboard-table-wrap', 'leaderboard-entries',
   'restart-after-submit'
 ]
@@ -732,14 +732,6 @@ test('leaderboard defaults to Score and supports sorting while labeling legacy e
     leaderboard: async ({ sortBy }) => {
       const entries = [
         {
-          rank: 1,
-          displayName: 'BIG PRIME',
-          score: 500,
-          largestPrime: 127,
-          submittedAt: '2026-11-06T10:00:00.000Z',
-          verified: true
-        },
-        {
           rank: 2,
           displayName: 'ACE',
           score: 2400,
@@ -749,16 +741,26 @@ test('leaderboard defaults to Score and supports sorting while labeling legacy e
         },
         {
           rank: 1,
-          displayName: 'OLD ACE',
+          displayName: 'ACE',
           score: 1200,
           largestPrime: 12,
           submittedAt: '2026-11-04T10:00:00.000Z',
           verified: false
+        },
+        {
+          rank: 1,
+          displayName: 'BIG PRIME',
+          score: 500,
+          largestPrime: 127,
+          submittedAt: '2026-11-06T10:00:00.000Z',
+          verified: true
         }
       ]
       entries.sort((a, b) => sortBy === 'score'
         ? b.score - a.score
-        : b.largestPrime - a.largestPrime || b.score - a.score)
+        : sortBy === 'largestPrime'
+          ? b.largestPrime - a.largestPrime || b.score - a.score
+          : a.largestPrime - b.largestPrime || b.score - a.score)
       return { entries, limit: 12, source: 'backend' }
     }
   })
@@ -770,22 +772,44 @@ test('leaderboard defaults to Score and supports sorting while labeling legacy e
   assert.equal(app.elements.get('leaderboard-dialog').open, true)
   assert.equal(calls.calls.leaderboard, 1)
   const rows = app.elements.get('leaderboard-entries').children
-  assert.deepEqual(rows[0].children.map(cell => cell.textContent), ['2', 'ACE', '2,400', '101'])
-  assert.deepEqual(rows[1].children.map(cell => cell.textContent), ['1', 'OLD ACE', '1,200', '12'])
-  assert.deepEqual(rows[2].children.map(cell => cell.textContent), ['1', 'BIG PRIME', '500', '127'])
+  assert.deepEqual(rows.map(row => row.children[0].textContent), ['1', '2', '3'])
+  assert.deepEqual(rows[0].children.map(cell => cell.textContent), ['1', 'ACE', '2,400', '101'])
+  assert.deepEqual(rows[1].children.map(cell => cell.textContent), ['2', 'ACE', '1,200', '12'])
+  assert.deepEqual(rows[2].children.map(cell => cell.textContent), ['3', 'BIG PRIME', '500', '127'])
   assert.equal(rows[1].children[1].children[0].textContent, 'unverified')
   assert.equal(rows[0].children[3].className.split(/\s+/).includes('largest-prime-record'), false)
   assert.equal(rows[2].children[3].className.split(/\s+/).includes('largest-prime-record'), true)
   assert.equal(calls.calls.leaderboardSorts[0], 'score')
-  assert.equal(app.elements.get('leaderboard-sort-control').hidden, false)
   assert.equal(app.elements.get('leaderboard-table-wrap').hidden, false)
-  app.elements.get('leaderboard-sort').value = 'largestPrime'
-  app.elements.get('leaderboard-sort').dispatch('change')
+  const sortButton = app.elements.get('sort-largest-prime')
+  const heading = app.elements.get('largest-prime-heading')
+  sortButton.dispatch('click')
   await settle()
   assert.equal(calls.calls.leaderboardSorts[1], 'largestPrime')
+  assert.equal(heading.attributes['aria-sort'], 'descending')
+  assert.equal(sortButton.attributes['aria-pressed'], 'true')
+  assert.equal(sortButton.attributes['aria-label'], 'Sort by largest prime descending')
   assert.deepEqual(
     app.elements.get('leaderboard-entries').children.map(row => row.children[1].textContent),
-    ['BIG PRIME', 'ACE', 'OLD ACE']
+    ['BIG PRIME', 'ACE', 'ACE']
+  )
+  assert.deepEqual(app.elements.get('leaderboard-entries').children.map(row => row.children[0].textContent), ['1', '2', '3'])
+  sortButton.dispatch('click')
+  await settle()
+  assert.equal(calls.calls.leaderboardSorts[2], 'largestPrimeAsc')
+  assert.equal(heading.attributes['aria-sort'], 'ascending')
+  assert.equal(sortButton.attributes['aria-label'], 'Sort by largest prime ascending')
+  assert.deepEqual(
+    app.elements.get('leaderboard-entries').children.map(row => row.children[3].textContent),
+    ['12', '101', '127']
+  )
+  sortButton.dispatch('click')
+  await settle()
+  assert.equal(calls.calls.leaderboardSorts[3], 'score')
+  assert.equal(heading.attributes['aria-sort'], 'none')
+  assert.deepEqual(
+    app.elements.get('leaderboard-entries').children.map(row => row.children[2].textContent),
+    ['2,400', '1,200', '500']
   )
   app.elements.get('close-leaderboard').dispatch('click')
   assert.equal(app.elements.get('leaderboard-dialog').open, false)

@@ -29,8 +29,8 @@ document.addEventListener('DOMContentLoaded', () => {
   const closeSummaryButton = document.getElementById('close-summary')
   const loadLeaderboardButton = document.getElementById('load-leaderboard')
   const leaderboardStatus = document.getElementById('leaderboard-status')
-  const leaderboardSortControl = document.getElementById('leaderboard-sort-control')
-  const leaderboardSort = document.getElementById('leaderboard-sort')
+  const sortLargestPrimeButton = document.getElementById('sort-largest-prime')
+  const largestPrimeHeading = document.getElementById('largest-prime-heading')
   const leaderboardTableWrap = document.getElementById('leaderboard-table-wrap')
   const leaderboardEntries = document.getElementById('leaderboard-entries')
   const cells = []
@@ -49,6 +49,7 @@ document.addEventListener('DOMContentLoaded', () => {
   let submissionConfirmed = false
   let persistentNotice = ''
   let leaderboardLoadSequence = 0
+  let leaderboardSortBy = 'score'
 
   function showNotice(message) {
     notice.textContent = message
@@ -534,13 +535,12 @@ document.addEventListener('DOMContentLoaded', () => {
 
   function showLeaderboardError(error) {
     leaderboardTableWrap.hidden = true
-    leaderboardSortControl.hidden = true
     leaderboardStatus.textContent = `Leaderboard unavailable (${error.message}). You can retry; your game is unaffected.`
   }
 
   async function loadLeaderboard() {
     const sequence = ++leaderboardLoadSequence
-    const sortBy = leaderboardSort.value || 'score'
+    const sortBy = leaderboardSortBy
     loadLeaderboardButton.disabled = true
     leaderboardTableWrap.hidden = true
     leaderboardStatus.textContent = 'Loading leaderboard entries…'
@@ -554,13 +554,12 @@ document.addEventListener('DOMContentLoaded', () => {
       }
       leaderboardEntries.replaceChildren()
       if (result.entries.length === 0) {
-        leaderboardSortControl.hidden = true
         leaderboardStatus.textContent = 'No runs have been submitted yet.'
         return
       }
-      result.entries.forEach(entry => {
+      result.entries.forEach((entry, index) => {
         const row = document.createElement('tr')
-        for (const value of [formatNumber(entry.rank), entry.displayName, formatNumber(entry.score), formatNumber(entry.largestPrime)]) {
+        for (const value of [formatNumber(index + 1), entry.displayName, formatNumber(entry.score), formatNumber(entry.largestPrime)]) {
           const cell = document.createElement('td')
           cell.textContent = value
           row.appendChild(cell)
@@ -576,9 +575,11 @@ document.addEventListener('DOMContentLoaded', () => {
         }
         leaderboardEntries.appendChild(row)
       })
-      leaderboardSortControl.hidden = false
       leaderboardTableWrap.hidden = false
-      leaderboardStatus.textContent = `Showing ${result.entries.length} scores sorted by ${sortBy === 'score' ? 'Score' : 'largest prime'}.`
+      const sortLabel = sortBy === 'score'
+        ? 'Score'
+        : `largest prime ${sortBy === 'largestPrime' ? 'descending' : 'ascending'}`
+      leaderboardStatus.textContent = `Showing ${result.entries.length} runs sorted by ${sortLabel}.`
     } catch (error) {
       if (sequence === leaderboardLoadSequence) {
         showLeaderboardError(error)
@@ -588,6 +589,33 @@ document.addEventListener('DOMContentLoaded', () => {
         loadLeaderboardButton.disabled = false
       }
     }
+  }
+
+  function cycleLargestPrimeSort() {
+    leaderboardSortBy = leaderboardSortBy === 'score'
+      ? 'largestPrime'
+      : leaderboardSortBy === 'largestPrime'
+        ? 'largestPrimeAsc'
+        : 'score'
+    const isPrimeSorted = leaderboardSortBy !== 'score'
+    sortLargestPrimeButton.classList.toggle('is-descending', leaderboardSortBy === 'largestPrime')
+    sortLargestPrimeButton.classList.toggle('is-ascending', leaderboardSortBy === 'largestPrimeAsc')
+    sortLargestPrimeButton.setAttribute('aria-pressed', String(isPrimeSorted))
+    sortLargestPrimeButton.setAttribute(
+      'aria-label',
+      leaderboardSortBy === 'score'
+        ? 'Sort by largest prime'
+        : `Sort by largest prime ${leaderboardSortBy === 'largestPrime' ? 'descending' : 'ascending'}`
+    )
+    largestPrimeHeading.setAttribute(
+      'aria-sort',
+      leaderboardSortBy === 'score'
+        ? 'none'
+        : leaderboardSortBy === 'largestPrime'
+          ? 'descending'
+          : 'ascending'
+    )
+    loadLeaderboard()
   }
 
   function openLeaderboard() {
@@ -604,7 +632,7 @@ document.addEventListener('DOMContentLoaded', () => {
   openRulesButton.addEventListener('click', () => rulesDialog.showModal())
   closeRulesButton.addEventListener('click', () => rulesDialog.close())
   openLeaderboardButton.addEventListener('click', openLeaderboard)
-  leaderboardSort.addEventListener('change', loadLeaderboard)
+  sortLargestPrimeButton.addEventListener('click', cycleLargestPrimeSort)
   closeLeaderboardButton.addEventListener('click', () => leaderboardDialog.close())
   gameOverDialog.addEventListener('close', () => {
     if (state.status === 'game-over') {

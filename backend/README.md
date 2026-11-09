@@ -124,8 +124,9 @@ returns `409 RUN_ALREADY_SUBMITTED`.
 
 Returns `{ "entries": [...], "limit": 12 }`, including verified and legacy
 unverified entries. By default, the 12 highest Scores are returned. Pass
-`?sort=largestPrime` to return the 12 largest primes instead; `?sort=score` is
-the default. Verified ranks remain competition ranks based on cumulative Score
+`?sort=largestPrime` or `?sort=largestPrimeAsc` to return entries ordered by
+largest prime descending or ascending; `?sort=score` is the default. Verified
+ranks remain competition ranks based on cumulative Score
 among verified entries; unverified entries retain their historical stored
 rank and carry `verified: false`. Unverified rows do not affect rank previews
 or new verified ranks. Public entries contain rank, display name, Score,

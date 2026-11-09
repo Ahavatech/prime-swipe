@@ -73,8 +73,7 @@ body {
 }
 
 button,
-input,
-select {
+input {
   font: inherit;
 }
 
@@ -105,7 +104,6 @@ button:disabled {
 button:focus-visible,
 a:focus-visible,
 input:focus-visible,
-select:focus-visible,
 summary:focus-visible,
 .grid:focus-visible {
   outline: 3px solid var(--focus);
@@ -401,25 +399,41 @@ summary:focus-visible,
   font-size: 13px;
 }
 
-.leaderboard-sort-control {
-  display: flex;
-  align-items: center;
-  justify-content: flex-end;
-  gap: 8px;
-  margin: 0 0 9px;
+.sort-arrow {
+  display: inline-grid;
+  width: 28px;
+  min-height: 28px;
+  place-items: center;
+  margin-left: 3px;
+  padding: 3px;
+  border-color: #b8c8dd;
+  background: var(--paper);
   color: var(--ink-soft);
-  font-size: 13px;
-  font-weight: 650;
+  vertical-align: middle;
 }
 
-.leaderboard-sort-control select {
-  min-height: 40px;
-  padding: 6px 32px 6px 10px;
-  border: 1px solid #8ca0bc;
-  border-radius: 7px;
-  background: var(--paper);
-  color: var(--navy);
-  font: inherit;
+.sort-arrow:hover:not(:disabled) {
+  background: #e6edf6;
+}
+
+.sort-arrow svg {
+  width: 18px;
+  height: 18px;
+  fill: none;
+  stroke: currentColor;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 1.8;
+}
+
+.sort-arrow .sort-arrow-up,
+.sort-arrow .sort-arrow-down {
+  opacity: 0.4;
+}
+
+.sort-arrow.is-descending .sort-arrow-down,
+.sort-arrow.is-ascending .sort-arrow-up {
+  opacity: 1;
 }
 
 .table-wrap {

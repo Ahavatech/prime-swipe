@@ -140,12 +140,12 @@ export const openApiSpec = {
     '/api/v1/leaderboard': {
       get: {
         summary: 'Get up to 12 runs ordered by Score or largest prime',
-        description: 'Verified and legacy unverified runs appear. By default, entries are ordered by Score descending; set sort=largestPrime to order by largest prime descending. Ranks remain based on cumulative Score; verified ranks count verified runs only, while unverified entries retain their historical stored rank. Unverified entries are labeled. Rank previews and qualification still include verified runs only.',
+        description: 'Verified and legacy unverified runs appear. By default, entries are ordered by Score descending; set sort=largestPrime or sort=largestPrimeAsc to order by largest prime descending or ascending. Ranks remain based on cumulative Score; verified ranks count verified runs only, while unverified entries retain their historical stored rank. Unverified entries are labeled. Rank previews and qualification still include verified runs only.',
         parameters: [{
           in: 'query',
           name: 'sort',
           required: false,
-          schema: { type: 'string', enum: ['score', 'largestPrime'], default: 'score' },
+          schema: { type: 'string', enum: ['score', 'largestPrime', 'largestPrimeAsc'], default: 'score' },
           description: 'Display ordering only. Ranks are always based on cumulative Score.'
         }],
         responses: {

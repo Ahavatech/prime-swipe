@@ -62,6 +62,24 @@ export function createLeaderboardService({ db, tokens, engine, now = Date.now, l
     ORDER BY largest_prime DESC, score DESC, submitted_at ASC, id ASC
     LIMIT ?
   `)
+  const primeAscendingEntries = db.prepare(`
+    SELECT CASE
+             WHEN verified = 1 THEN (
+               SELECT COUNT(*) + 1
+               FROM scores AS ranked
+               WHERE ranked.verified = 1 AND ranked.score > scores.score
+             )
+             ELSE submission_rank
+           END AS rank,
+           display_name AS displayName,
+           score,
+           largest_prime AS largestPrime,
+           submitted_at AS submittedAt,
+           verified
+    FROM scores
+    ORDER BY largest_prime ASC, score DESC, submitted_at ASC, id ASC
+    LIMIT ?
+  `)
 
   function storedResult(row) {
     return {
@@ -186,9 +204,14 @@ export function createLeaderboardService({ db, tokens, engine, now = Date.now, l
     },
 
     getLeaderboard(sortBy = 'score') {
-      const entriesQuery = sortBy === 'largestPrime'
-        ? primeOrderedEntries
-        : scoreOrderedEntries
+      const entriesQuery = {
+        score: scoreOrderedEntries,
+        largestPrime: primeOrderedEntries,
+        largestPrimeAsc: primeAscendingEntries
+      }[sortBy]
+      if (!entriesQuery) {
+        throw new HttpError(400, 'INVALID_SORT', 'sort must be score, largestPrime, or largestPrimeAsc.')
+      }
       return {
         entries: entriesQuery.all(PUBLIC_LEADERBOARD_LIMIT).map(entry => ({
           ...entry,

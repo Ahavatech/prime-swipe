@@ -24,10 +24,10 @@ function validateLeaderboardSort(value) {
   if (value === undefined || value === 'score') {
     return 'score'
   }
-  if (value === 'largestPrime') {
+  if (value === 'largestPrime' || value === 'largestPrimeAsc') {
     return value
   }
-  throw new HttpError(400, 'INVALID_SORT', 'sort must be score or largestPrime.')
+  throw new HttpError(400, 'INVALID_SORT', 'sort must be score, largestPrime, or largestPrimeAsc.')
 }
 
 // The browser sends a run token it got from POST /runs, the moves it played, and the score it
